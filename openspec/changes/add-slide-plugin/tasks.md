@@ -86,7 +86,7 @@ Issue: #3
   - Test first: `tests/test_build_cli.py` が、spec の「生成コマンド」の全シナリオ（成功で 0 と PPTX、違反の行ごとの `<パス>:<行>: <理由>`、失敗時に既存の出力が変わらない）を確かめて赤になる
   - Review: batch D / Risk: none
 
-- [ ] 4.3 守りのテストの変異確認
+- [x] 4.3 守りのテストの変異確認
   - Files: なし（記録は ledger と PR の証拠）
   - Verify: `harness:mutation-check` で、(a) 絵文字の判定を外す、(b) 色を 1 つ 4 色以外に変える、(c) 表のセルに塗りを足す、(d) 失敗時にも出力を書く、(e) 書体を 1 か所メイリオ以外にする、のそれぞれでテストが赤になり、元に戻すと緑になる
   - Review: batch D / Risk: none
