@@ -4,6 +4,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+from slidekit.fit import line_count
 from slidekit.grid import Grid, GridError, Problem, resolve
 
 # Unicode 15.1 の emoji-data.txt の Extended_Pictographic の範囲（両端を含む）。
@@ -156,6 +157,12 @@ MIN_COLUMNS, MAX_COLUMNS = 2, 4
 MAX_TABLE_ROWS = 6
 MAX_BLOCK_BULLETS = 4
 
+# design.md「寸法と文字の大きさ」。枠の幅（インチ）。
+BODY_WIDTH = 11.53
+INDENT = 0.4
+FIGURE_CAPTION_WIDTH = 5.2
+COLUMN_WIDTH = 5.5
+
 
 def _grid_message(ref: str, p: Problem) -> str:
     """格子の違反を、原稿の行の報告に載せる文にする。位置は格子ファイルの中のもの。"""
@@ -188,6 +195,18 @@ class _Parser:
         p = Problem(line, None, message)
         if p not in self.problems:
             self.problems.append(p)
+
+    def fit(
+        self, no: int, text: str | Text, label: str, pt: float, width: float, max_lines: int
+    ) -> None:
+        """枠に収まらない文字を拒否する（強調の記号は幅に数えない）。"""
+        plain = text if isinstance(text, str) else "".join(r.text for r in text)
+        n = line_count(plain, pt, width)
+        if n > max_lines:
+            self.add(
+                no,
+                f"{label}が長すぎます（{pt:g}pt の枠で {n} 行、上限は {max_lines} 行）。短くしてください",
+            )
 
     # --- 全体 ---
 
@@ -285,6 +304,7 @@ class _Parser:
             self.add(first.no, "表紙にはタイトル（`# タイトル`）が必要です")
             return None
         title = first.s[2:].strip()
+        self.fit(first.no, title, "表紙のタイトル", 40, BODY_WIDTH, 2)
         if not title:
             self.add(first.no, "表紙のタイトルが空です")
         rest = lines[1:]
@@ -300,6 +320,7 @@ class _Parser:
                     self.add(ln.no, f"表紙の文は {MAX_COVER_LINES} 行までです")
             else:
                 out.append(_runs(s))
+                self.fit(ln.no, out[-1], "表紙の文", 20, BODY_WIDTH, 1)
         return Cover(title, out)
 
     # --- 表紙以外 ---
@@ -324,6 +345,7 @@ class _Parser:
         heading = first.s[3:].strip()
         if not heading:
             self.add(first.no, "見出しが空です")
+        self.fit(first.no, heading, "見出し", 30, BODY_WIDTH, 1)
         body = body_lines[1:]
         if not body:
             self.add(first.no, "見出しだけのスライドです。本文を足してください")
@@ -343,7 +365,9 @@ class _Parser:
         if _BULLET.match(first.raw) or s.startswith(("|", "![", "## ")):
             self.add(first.no, "見出しのないスライドは 1 行の文だけ（一言）です")
             return None
-        return Statement(_runs(s))
+        text = _runs(s)
+        self.fit(first.no, text, "一言", 40, BODY_WIDTH, 3)
+        return Statement(text)
 
     def _with_heading(self, heading: str, body: list[_Line]) -> Slide | None:
         if all(_BULLET.match(ln.raw) for ln in body):
@@ -387,6 +411,7 @@ class _Parser:
             if not m.group(1).strip():
                 self.add(ln.no, "箇条書きの項目が空です")
             items.append(_runs(m.group(1).strip()))
+            self.fit(ln.no, items[-1], "箇条書きの項目", 24, BODY_WIDTH - INDENT, 2)
         return Bullets(heading, items)
 
     # --- 図 ---
@@ -419,6 +444,7 @@ class _Parser:
                 valid = False
             else:
                 caption = _runs(cap.s)
+                self.fit(cap.no, caption, "図の説明文", 20, FIGURE_CAPTION_WIDTH, 3)
         if len(body) > 2:
             self.add(body[2].no, "図の説明文は 1 行までです")
             valid = False
@@ -443,6 +469,9 @@ class _Parser:
                 return None
         header = self._cells(head.s)
         n = len(header)
+        cell_width = BODY_WIDTH / n - 0.2
+        for c in header:
+            self.fit(head.no, c, "表のセル", 18, cell_width, 2)
         ok = True
         if not MIN_COLUMNS <= n <= MAX_COLUMNS:
             self.add(head.no, f"表の列は {MIN_COLUMNS}〜{MAX_COLUMNS} 列です（{n} 列あります）")
@@ -475,6 +504,8 @@ class _Parser:
                 self.add(ln.no, f"行の列数 {len(cells)} が見出し行の {n} と違います")
                 ok = False
             rows.append([_runs(c) for c in cells])
+            for c in cells:
+                self.fit(ln.no, c, "表のセル", 18, BODY_WIDTH / n - 0.2, 2)
         if not ok:
             return None
         return Table(heading, [_runs(c) for c in header], rows)
@@ -520,6 +551,7 @@ class _Parser:
                 if not m.group(1).strip():
                     self.add(ln.no, "箇条書きの項目が空です")
                 items.append(_runs(m.group(1).strip()))
+                self.fit(ln.no, items[-1], "2 列の箇条書きの項目", 22, COLUMN_WIDTH - INDENT, 2)
             return BulletsBlock(items)
         stray = next((ln for ln in lines if _BULLET.match(ln.raw)), None)
         if len(lines) > 1:
@@ -535,7 +567,9 @@ class _Parser:
         if only.s.startswith("|"):
             self.add(only.no, what)
             return None
-        return TextBlock(_runs(only.s))
+        text = _runs(only.s)
+        self.fit(only.no, text, "2 列の文", 22, COLUMN_WIDTH, 3)
+        return TextBlock(text)
 
 
 def parse(text: str, base_dir: Path) -> Deck:

@@ -67,7 +67,7 @@ Issue: #3
   - Test first: `tests/test_manuscript_layouts.py` が、spec の「図レイアウト」「表レイアウト」「左右 2 列レイアウト」の全シナリオと、図の参照先の格子の違反が原稿の行番号と格子の位置で報告されることを確かめて赤になる
   - Review: batch C / Risk: none
 
-- [ ] 3.4 枠からのはみ出しの判定
+- [x] 3.4 枠からのはみ出しの判定
   - Files: `slidekit/manuscript.py`、`tests/test_manuscript_fit.py`
   - Test first: `tests/test_manuscript_fit.py` が、design.md「寸法と文字の大きさ」の表の要素ごとに、上限ちょうどの行数は通り、1 行超えると拒否されること（spec の「見出しが長すぎる」「収まる長さ」を含む）を確かめて赤になる
   - Review: batch C / Risk: none
