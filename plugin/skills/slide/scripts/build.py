@@ -5,9 +5,10 @@
 """原稿（Markdown 風のテキスト）を PPTX にする。
 
 使い方:
-    build.py <原稿.md> <出力.pptx>
+    build.py <原稿.md> -o <出力.pptx>
 """
 
+import argparse
 import os
 import sys
 import tempfile
@@ -20,10 +21,14 @@ from slidekit.render import render
 
 
 def main(argv: list[str]) -> int:
-    if len(argv) != 2:
-        print("使い方: build.py <原稿.md> <出力.pptx>", file=sys.stderr)
-        return 1
-    src, out = Path(argv[0]), Path(argv[1])
+    parser = argparse.ArgumentParser(prog="build.py", description="原稿を PPTX にする")
+    parser.add_argument("source", help="原稿のパス")
+    parser.add_argument("-o", "--output", required=True, help="出力する PPTX のパス")
+    try:
+        args = parser.parse_args(argv)
+    except SystemExit as e:
+        return 0 if e.code == 0 else 1
+    src, out = Path(args.source), Path(args.output)
 
     try:
         text = src.read_text(encoding="utf-8")

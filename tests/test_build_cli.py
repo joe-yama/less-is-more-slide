@@ -20,7 +20,7 @@ def test_success_writes_pptx_and_exits_0(tmp_path):
     src = tmp_path / "a.md"
     src.write_text(GOOD, encoding="utf-8")
     out = tmp_path / "a.pptx"
-    assert build.main([str(src), str(out)]) == 0
+    assert build.main([str(src), "-o", str(out)]) == 0
     assert len(Presentation(str(out)).slides) == 2
 
 
@@ -28,7 +28,7 @@ def test_violations_one_line_each_with_path_and_line(tmp_path, capsys):
     src = tmp_path / "bad.md"
     src.write_text(BAD, encoding="utf-8")
     out = tmp_path / "bad.pptx"
-    assert build.main([str(src), str(out)]) == 1
+    assert build.main([str(src), "-o", str(out)]) == 1
     lines = capsys.readouterr().err.splitlines()
     assert len(lines) >= 2
     assert all(line.startswith(f"{src}:") for line in lines)
@@ -43,7 +43,7 @@ def test_failure_keeps_existing_output(tmp_path):
     src.write_text(BAD, encoding="utf-8")
     out = tmp_path / "keep.pptx"
     out.write_bytes(b"old")
-    assert build.main([str(src), str(out)]) == 1
+    assert build.main([str(src), "-o", str(out)]) == 1
     assert out.read_bytes() == b"old"
 
 
@@ -59,7 +59,7 @@ def test_render_failure_keeps_existing_output(tmp_path, monkeypatch):
 
     monkeypatch.setattr(build, "render", boom)
     try:
-        build.main([str(src), str(out)])
+        build.main([str(src), "-o", str(out)])
     except RuntimeError:
         pass
     assert out.read_bytes() == b"old"
@@ -71,11 +71,11 @@ def test_grid_reference_resolves_relative_to_manuscript(tmp_path):
     src = tmp_path / "a.md"
     src.write_text("# 題\n---\n## 図\n![絵](g.txt)\n", encoding="utf-8")
     out = tmp_path / "a.pptx"
-    assert build.main([str(src), str(out)]) == 0
+    assert build.main([str(src), "-o", str(out)]) == 0
 
 
 def test_missing_manuscript_exits_1(tmp_path, capsys):
-    assert build.main([str(tmp_path / "none.md"), str(tmp_path / "o.pptx")]) == 1
+    assert build.main([str(tmp_path / "none.md"), "-o", str(tmp_path / "o.pptx")]) == 1
     assert "none.md" in capsys.readouterr().err
 
 
@@ -88,10 +88,19 @@ def test_runs_as_script(tmp_path):
     src.write_text(GOOD, encoding="utf-8")
     out = tmp_path / "a.pptx"
     r = subprocess.run(
-        [sys.executable, build.__file__, str(src), str(out)],
+        [sys.executable, build.__file__, str(src), "-o", str(out)],
         capture_output=True,
         text=True,
         check=False,
     )
     assert r.returncode == 0, r.stderr
     assert out.exists()
+
+
+def test_output_without_o_is_rejected(tmp_path):
+    src = tmp_path / "a.md"
+    src.write_text(GOOD, encoding="utf-8")
+    out = tmp_path / "a.pptx"
+    assert build.main([str(src), str(out)]) != 0
+    assert not out.exists()
+    assert build.main([str(src)]) != 0
