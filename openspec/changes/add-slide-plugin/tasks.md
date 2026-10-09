@@ -115,7 +115,7 @@ Issue: #3
 
 ## 6. 統合確認
 
-- [ ] 6.1 すべてのコマンドを通す
+- [x] 6.1 すべてのコマンドを通す
   - Verify: `uv run ruff check . && uv run ruff format --check . && uv run pytest` がすべて成功し、push 後の CI の job `check` が緑
   - Review: batch F（ブランチ全体の最終レビューで併せて見る）/ Risk: none
 
