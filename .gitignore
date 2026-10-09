@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+.claude/settings.local.json
+.claude/worktrees/
+.playwright-mcp/
+.harness/*
+!.harness/env.json
+.superpowers/
+.DS_Store

@@ -1,0 +1,14 @@
+{
+  "enabledPlugins": {
+    "harness@agentic-harness": true
+  },
+  "extraKnownMarketplaces": {
+    "agentic-harness": {
+      "source": {
+        "source": "github",
+        "repo": "joe-yama/agentic-harness",
+        "ref": "v0.4.0"
+      }
+    }
+  }
+}

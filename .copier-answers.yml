@@ -1,0 +1,15 @@
+# Changes here will be overwritten by Copier; do not edit manually.
+_commit: harness--v0.4.0
+_src_path: gh:joe-yama/agentic-harness
+agents:
+- claude
+- copilot
+default_branch: main
+github_owner: joe-yama
+lint_cmd: ''
+lint_pattern: ''
+project_name: less-is-more-slide
+project_summary: Claude Code と GitHub Copilot でスライドを作成するための Skill と Agent を、プラグインとして公開する。
+test_cmd: ''
+ui_review: false
+work_language: ja
