@@ -50,7 +50,7 @@ Issue: #3
 
 ## 3. 原稿の解析
 
-- [ ] 3.1 文字幅の見積もり
+- [x] 3.1 文字幅の見積もり
   - Files: `plugin/skills/slide/scripts/slidekit/fit.py`、`tests/test_fit.py`
   - Interface: `text_width_em(text) -> float`、`line_count(text, font_pt, box_width_in) -> int`
   - Test first: `tests/test_fit.py` が、全角 1.0em・半角 0.6em の見積もりと、design.md の見出しの枠で全角 15 文字が 1 行・60 文字が 2 行以上になることを確かめて赤になる
