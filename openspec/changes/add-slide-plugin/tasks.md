@@ -119,7 +119,7 @@ Issue: #3
   - Verify: `uv run ruff check . && uv run ruff format --check . && uv run pytest` がすべて成功し、push 後の CI の job `check` が緑
   - Review: batch F（ブランチ全体の最終レビューで併せて見る）/ Risk: none
 
-- [ ] 6.2 両方の CLI でプラグインを読み込んで動かす
+- [x] 6.2 両方の CLI でプラグインを読み込んで動かす
   - Verify: `claude --plugin-dir ./plugin -p` と `copilot --plugin-dir ./plugin -p` のそれぞれで、(a) Skill `slide` と Agent `writer`・`critic` が見えること、(b) 作成役に主題と 3 行の材料を渡すと原稿と PPTX ができ返答に両方のパスがあること、(c) 点検役に `tests/fixtures/ai_tells.md` を渡すと 5 種のうち 4 種以上がスライド番号・引用・書き直し案付きで指摘され、ファイルが変わらないことを確かめる。結果と使った CLI の版を PR の証拠に書く。片方の CLI で失敗したら、原因を Issue に書いて PO に伝える
   - 確かめ方の補足（2026-10-09 batch E レビューによる判断）: (b) と (c) は、リポジトリの外の作業フォルダで行う（`--plugin-dir` にはリポジトリの `plugin` の絶対パスを渡し、`ai_tells.md` はそのフォルダに写す）。リポジトリの中で動かすと、プラグインの外にある同じ名前のファイルが見つかって、導入後の状態を確かめられないため。(c) の「5 種」は仕込んだ 2・3・4・7・12 番だけで数える。Copilot CLI で `writer`・`critic` が見えないときは、`agents/writer.agent.md`・`agents/critic.agent.md` への名前の変更を試し、効いたら design.md の配置と `tests/test_plugin.py` を合わせて直す
   - Review: batch F（ブランチ全体の最終レビューで併せて見る）/ Risk: none
