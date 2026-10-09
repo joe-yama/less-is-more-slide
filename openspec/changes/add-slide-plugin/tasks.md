@@ -93,7 +93,7 @@ Issue: #3
 
 ## 5. Skill・Agent・配布
 
-- [ ] 5.1 見本原稿と、開発環境の外での生成
+- [x] 5.1 見本原稿と、開発環境の外での生成
   - Files: `examples/sample.md`、`examples/robot.txt`、`tests/test_examples.py`、`.github/workflows/ci.yml`（`uv run --no-project` で見本を生成する手順）
   - Test first: `tests/test_examples.py` が、見本が 6 種のレイアウトをすべて含み、格子ファイルを参照し、生成に成功することを確かめて赤になる。CI の新しい手順は push 後の job `check` で緑になることを確かめる
   - Review: batch E / Risk: none

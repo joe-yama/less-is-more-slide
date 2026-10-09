@@ -44,3 +44,8 @@ jobs:
         run: uv run ruff check . && uv run ruff format --check .
       - name: Test
         run: uv run pytest
+      - name: Build the sample outside the dev environment
+        run: |
+          out=$(mktemp -d)/sample.pptx
+          uv run --no-project plugin/skills/slide/scripts/build.py examples/sample.md -o "$out"
+          test -s "$out"
