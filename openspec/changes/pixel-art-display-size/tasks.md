@@ -31,7 +31,7 @@ Issue: #6
   - Review: batch A / Risk: none
 
 - [x] 3.2 すべてのコマンドを通し、見本の PPTX を作る
-  - Verify: `uv run pytest` がすべて緑、`uv run ruff check . && uv run ruff format --check .` が通る。`uv run plugin/skills/slide/scripts/build.py examples/sample.md <一時フォルダ>/sample.pptx` が終了コード 0 で、ロボットの画像が 0.6 インチ四方、歯車が 1.2 インチ四方である（python-pptx で読んで確かめる）。PR の本文に、PO が受け入れで PowerPoint で開くファイルの作り方を書く
+  - Verify: `uv run pytest` がすべて緑、`uv run ruff check . && uv run ruff format --check .` が通る。`uv run plugin/skills/slide/scripts/build.py examples/sample.md -o <一時フォルダ>/sample.pptx` が終了コード 0 で、ロボットの画像が 0.6 インチ四方、歯車が 1.2 インチ四方である（python-pptx で読んで確かめる）。PR の本文に、PO が受け入れで PowerPoint で開くファイルの作り方を書く
   - Review: batch A / Risk: none
 
 ## シナリオと確認するタスク
@@ -48,3 +48,6 @@ Issue: #6
 - Cost if wrong: 200 ドットの格子の PNG が 1 辺 200 ピクセル大きくなるだけで、見た目は変わらない。
 
 ## Proposals
+
+- （2.1 レビュー、Minor）左右 2 列の画像のテストは 16×16 のアイコンだけを確かめている。大きさは図のレイアウトと同じ `_picture` で決まるので、レビュアーの判断は対応不要。
+- （2.1 レビュー、Minor）PNG の拡大率の下限が 1 なので、長辺 1024 ドット以上の格子は拡大しない PNG になる。design.md「PNG の拡大率の下限を 1 にする」のとおりで、レビュアーの判断は対応不要。
