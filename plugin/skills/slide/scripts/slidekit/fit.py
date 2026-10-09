@@ -7,6 +7,18 @@ FULL_EM = 1.0
 HALF_EM = 0.6  # メイリオの半角は約 0.55em。安全側に寄せる
 _EPS = 1e-9
 
+# design.md「寸法と文字の大きさ」。文字の大きさ（pt）。render と manuscript の両方がここを使う。
+PT_COVER_TITLE = 40
+PT_COVER_LINE = 20
+PT_HEADING = 30
+PT_STATEMENT = 40
+PT_BULLET = 24
+PT_CAPTION = 20
+PT_CELL = 18
+PT_COLUMN_BULLET = 22
+PT_COLUMN_TEXT = 22
+PT_PAGE_NUMBER = 12
+
 
 def text_width_em(text: str) -> float:
     """全角（W・F）は 1.0em、それ以外は 0.6em として合計する。"""

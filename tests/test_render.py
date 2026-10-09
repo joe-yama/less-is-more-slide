@@ -156,6 +156,32 @@ def test_no_decoration_elements(pptx_path):
         assert "blip" not in bg and "gradFill" not in bg
 
 
+def test_no_gradient_or_effect_in_any_part(pptx_path):
+    banned = (
+        "gradFill",
+        "outerShdw",
+        "innerShdw",
+        "prstShdw",
+        "a:glow",
+        "softEdge",
+        "a:reflection",
+        "effectDag",
+        "a:scene3d",
+        "a:sp3d",
+        "p:timing",
+        "p:transition",
+    )
+    with zipfile.ZipFile(pptx_path) as z:
+        for name in z.namelist():
+            if not name.endswith((".xml", ".rels")):
+                continue
+            xml = z.read(name).decode("utf-8")
+            for tag in banned:
+                assert tag not in xml, (name, tag)
+            # 効果の指定は空の `<a:effectLst/>` だけ
+            assert not re.search(r"<a:effectLst>", xml), name
+
+
 def test_shapes_are_only_text_boxes_pictures_and_tables(pptx_path):
     prs = Presentation(pptx_path)
     for slide in prs.slides:
@@ -195,7 +221,8 @@ def test_paragraphs_left_aligned_except_page_number(pptx_path):
 
 def test_16_9_and_slide_count(pptx_path):
     prs = Presentation(pptx_path)
-    assert prs.slide_width == Inches(13.333) or abs(prs.slide_width - Inches(13.333)) < 2000
+    assert prs.slide_width == 12192000
+    assert prs._element.xpath("./p:sldSz/@type") == []
     assert prs.slide_height == Inches(7.5)
     assert len(prs.slides) == 6
 
@@ -410,3 +437,66 @@ def test_cover_without_subtitle_lines(tmp_path):
 def test_no_leftover_parts(pptx_path):
     with zipfile.ZipFile(pptx_path) as z:
         assert "docProps/thumbnail.jpeg" not in z.namelist()
+
+
+# --- design.md「寸法と文字の大きさ」 ---
+
+
+def sizes(shape_or_cell):
+    """(文字, 大きさ pt, 色) の一覧。"""
+    out = []
+    for p in shape_or_cell.text_frame.paragraphs:
+        for r in p.runs:
+            out.append((r.text, r.font.size.pt, str(r.font.color.rgb)))
+    return out
+
+
+def shape_with(slide, needle):
+    return next(s for s in slide.shapes if s.has_text_frame and needle in s.text_frame.text)
+
+
+def test_sizes_and_colors_follow_design_table(pptx_path):
+    cover, statement, bullets, figure, table, columns = list(Presentation(pptx_path).slides)
+    assert sizes(cover.shapes.title) == [("四半期の振り返り", 40, "1A1A1A")]
+    assert sizes(shape_with(cover, "営業部")) == [
+        ("営業部 山田", 20, "6B6B6B"),
+        ("2026 年 10 月", 20, "6B6B6B"),
+    ]
+    assert sizes(statement.shapes[0])[0][:2] == ("結論から言うと、来期は", 40)
+    assert {pt for _, pt, _ in sizes(statement.shapes[0])} == {40}
+    for slide in (bullets, figure, table, columns):
+        assert slide.shapes.title.text_frame.paragraphs[0].runs[0].font.size.pt == 30
+        assert sizes(slide.shapes.title)[0][2] == "1A1A1A"
+    assert {pt for _, pt, _ in sizes(shape_with(bullets, "新規"))} == {24}
+    assert sizes(shape_with(figure, "毎晩")) == [("毎晩 2 時に動く。", 20, "1A1A1A")]
+    cells = next(s for s in table.shapes if s.has_table).table
+    for ri in range(4):
+        for ci in range(3):
+            (_, pt, color), *_ = sizes(cells.cell(ri, ci))
+            assert pt == 18 and color == ("6B6B6B" if ri == 0 else "1A1A1A")
+    assert {pt for _, pt, _ in sizes(shape_with(columns, "手作業"))} == {22}
+
+
+def test_two_column_text_block_size(tmp_path):
+    out = build(tmp_path, "# 題\n---\n## 見出し\n左の文。\n|||\n- 右の項目\n")
+    slide = list(Presentation(out).slides)[1]
+    assert sizes(shape_with(slide, "左の文"))[0][1] == 22
+    assert sizes(shape_with(slide, "右の項目"))[0][1] == 22
+
+
+def test_manuscript_and_render_share_size_definitions():
+    import slidekit.fit as fit_mod
+
+    for name in (
+        "PT_COVER_TITLE",
+        "PT_COVER_LINE",
+        "PT_HEADING",
+        "PT_STATEMENT",
+        "PT_BULLET",
+        "PT_CAPTION",
+        "PT_CELL",
+        "PT_COLUMN_BULLET",
+        "PT_COLUMN_TEXT",
+        "PT_PAGE_NUMBER",
+    ):
+        assert hasattr(fit_mod, name)

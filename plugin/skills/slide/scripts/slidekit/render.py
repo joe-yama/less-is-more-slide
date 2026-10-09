@@ -14,6 +14,18 @@ from pptx.opc.constants import RELATIONSHIP_TYPE as RT
 from pptx.oxml import parse_xml
 from pptx.util import Emu, Inches, Pt
 
+from slidekit.fit import (
+    PT_BULLET,
+    PT_CAPTION,
+    PT_CELL,
+    PT_COLUMN_BULLET,
+    PT_COLUMN_TEXT,
+    PT_COVER_LINE,
+    PT_COVER_TITLE,
+    PT_HEADING,
+    PT_PAGE_NUMBER,
+    PT_STATEMENT,
+)
 from slidekit.manuscript import (
     Block,
     Bullets,
@@ -132,7 +144,7 @@ def _page_number(slide, n: int) -> None:
     p.alignment = PP_ALIGN.RIGHT
     run = p.add_run()
     run.text = str(n)
-    _style_run(run, 12, GRAY)
+    _style_run(run, PT_PAGE_NUMBER, GRAY)
 
 
 def _picture(slide, grid, alt: str, x: float, y: float) -> None:
@@ -164,20 +176,20 @@ def _white_background(slide) -> None:
 
 
 def _cover(slide, s: Cover) -> None:
-    _title(slide, s.title, MARGIN_X, 1.6, BODY_W, 2.2, 40, MSO_ANCHOR.BOTTOM)
+    _title(slide, s.title, MARGIN_X, 1.6, BODY_W, 2.2, PT_COVER_TITLE, MSO_ANCHOR.BOTTOM)
     if s.lines:
         tf = _textbox(slide, "表紙の文", MARGIN_X, 4.1, BODY_W, 1.8)
-        _paragraphs(tf, s.lines, 20, GRAY, False)
+        _paragraphs(tf, s.lines, PT_COVER_LINE, GRAY, False)
 
 
 def _statement(slide, s: Statement) -> None:
     tf = _textbox(slide, "一言", MARGIN_X, HEAD_TOP, BODY_W, 7.5 - 2 * HEAD_TOP, MSO_ANCHOR.MIDDLE)
-    _paragraphs(tf, [s.text], 40, INK, False)
+    _paragraphs(tf, [s.text], PT_STATEMENT, INK, False)
 
 
 def _bullets(slide, s: Bullets) -> None:
     tf = _textbox(slide, "箇条書き", MARGIN_X, BODY_TOP, BODY_W, 4.9)
-    _paragraphs(tf, s.items, 24, INK, True, gap=12)
+    _paragraphs(tf, s.items, PT_BULLET, INK, True, gap=12)
 
 
 def _figure(slide, s: Figure) -> None:
@@ -185,7 +197,7 @@ def _figure(slide, s: Figure) -> None:
     if s.caption is not None:
         x = MARGIN_X + IMAGE_MAX + CAPTION_GAP
         tf = _textbox(slide, "図の説明", x, BODY_TOP, CAPTION_W, 2.4)
-        _paragraphs(tf, [s.caption], 20, INK, False)
+        _paragraphs(tf, [s.caption], PT_CAPTION, INK, False)
 
 
 def _line_xml(side: str, visible: bool) -> str:
@@ -221,7 +233,7 @@ def _table(slide, s: Table) -> None:
             cell.margin_top = cell.margin_bottom = Inches(0.05)
             cell.vertical_anchor = MSO_ANCHOR.MIDDLE
             cell.fill.background()
-            _fill_paragraph(cell.text_frame.paragraphs[0], text, 18, GRAY if ri == 0 else INK)
+            _fill_paragraph(cell.text_frame.paragraphs[0], text, PT_CELL, GRAY if ri == 0 else INK)
             tc_pr = cell._tc.get_or_add_tcPr()
             underline = ri in (0, n_rows - 1)
             sides = [("lnL", False), ("lnR", False), ("lnT", False), ("lnB", underline)]
@@ -232,12 +244,12 @@ def _table(slide, s: Table) -> None:
 def _block(slide, b: Block, x: float) -> None:
     if isinstance(b, BulletsBlock):
         tf = _textbox(slide, "箇条書き", x, BODY_TOP, COLUMN_W, 4.9)
-        _paragraphs(tf, b.items, 22, INK, True, gap=10)
+        _paragraphs(tf, b.items, PT_COLUMN_BULLET, INK, True, gap=10)
     elif isinstance(b, ImageBlock):
         _picture(slide, b.grid, b.alt, x, BODY_TOP)
     elif isinstance(b, TextBlock):
         tf = _textbox(slide, "文", x, BODY_TOP, COLUMN_W, 4.9)
-        _paragraphs(tf, [b.text], 22, INK, False)
+        _paragraphs(tf, [b.text], PT_COLUMN_TEXT, INK, False)
 
 
 def _two_columns(slide, s: TwoColumn) -> None:
@@ -259,6 +271,20 @@ def _set_theme_fonts(prs) -> None:
         return re.sub(r'(<a:font script="Jpan" typeface=")[^"]*"', rf'\g<1>{FONT}"', block)
 
     xml = re.sub(r"<a:(major|minor)Font>.*?</a:\1Font>", fix, xml, flags=re.DOTALL)
+    # 書式スキームのグラデーション・影・立体は、単色と空の効果に置き換える（個数は規格どおり 3）
+    solid = '<a:solidFill><a:schemeClr val="phClr"/></a:solidFill>' * 3
+    effects = "<a:effectStyle><a:effectLst/></a:effectStyle>" * 3
+    for tag, body in (
+        ("fillStyleLst", solid),
+        ("bgFillStyleLst", solid),
+        ("effectStyleLst", effects),
+    ):
+        xml = re.sub(
+            rf"<a:{tag}>.*?</a:{tag}>",
+            lambda _, t=tag, b=body: f"<a:{t}>{b}</a:{t}>",
+            xml,
+            flags=re.DOTALL,
+        )
     theme._blob = xml.encode("utf-8")
 
 
@@ -291,6 +317,8 @@ def _set_properties(prs, title: str) -> None:
 def render(deck: Deck, out_path: Path) -> None:
     prs = Presentation()
     prs.slide_width, prs.slide_height = SLIDE_W, SLIDE_H
+    # テンプレートの 4:3 の種別が残ると PowerPoint の表示が食い違う
+    prs._element.sldSz.attrib.pop("type", None)
     _set_theme_fonts(prs)
     for number, s in enumerate(deck.slides, start=1):
         blank = isinstance(s, Statement)
@@ -303,7 +331,7 @@ def render(deck: Deck, out_path: Path) -> None:
         elif isinstance(s, Statement):
             _statement(slide, s)
         else:
-            _title(slide, s.heading, MARGIN_X, HEAD_TOP, BODY_W, 0.9, 30)
+            _title(slide, s.heading, MARGIN_X, HEAD_TOP, BODY_W, 0.9, PT_HEADING)
             if isinstance(s, Bullets):
                 _bullets(slide, s)
             elif isinstance(s, Figure):

@@ -4,7 +4,18 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from slidekit.fit import line_count
+from slidekit.fit import (
+    PT_BULLET,
+    PT_CAPTION,
+    PT_CELL,
+    PT_COLUMN_BULLET,
+    PT_COLUMN_TEXT,
+    PT_COVER_LINE,
+    PT_COVER_TITLE,
+    PT_HEADING,
+    PT_STATEMENT,
+    line_count,
+)
 from slidekit.grid import Grid, GridError, Problem, resolve
 
 # Unicode 15.1 の emoji-data.txt の Extended_Pictographic の範囲（両端を含む）。
@@ -304,7 +315,7 @@ class _Parser:
             self.add(first.no, "表紙にはタイトル（`# タイトル`）が必要です")
             return None
         title = first.s[2:].strip()
-        self.fit(first.no, title, "表紙のタイトル", 40, BODY_WIDTH, 2)
+        self.fit(first.no, title, "表紙のタイトル", PT_COVER_TITLE, BODY_WIDTH, 2)
         if not title:
             self.add(first.no, "表紙のタイトルが空です")
         rest = lines[1:]
@@ -320,7 +331,7 @@ class _Parser:
                     self.add(ln.no, f"表紙の文は {MAX_COVER_LINES} 行までです")
             else:
                 out.append(_runs(s))
-                self.fit(ln.no, out[-1], "表紙の文", 20, BODY_WIDTH, 1)
+                self.fit(ln.no, out[-1], "表紙の文", PT_COVER_LINE, BODY_WIDTH, 1)
         return Cover(title, out)
 
     # --- 表紙以外 ---
@@ -345,7 +356,7 @@ class _Parser:
         heading = first.s[3:].strip()
         if not heading:
             self.add(first.no, "見出しが空です")
-        self.fit(first.no, heading, "見出し", 30, BODY_WIDTH, 1)
+        self.fit(first.no, heading, "見出し", PT_HEADING, BODY_WIDTH, 1)
         body = body_lines[1:]
         if not body:
             self.add(first.no, "見出しだけのスライドです。本文を足してください")
@@ -366,7 +377,7 @@ class _Parser:
             self.add(first.no, "見出しのないスライドは 1 行の文だけ（一言）です")
             return None
         text = _runs(s)
-        self.fit(first.no, text, "一言", 40, BODY_WIDTH, 3)
+        self.fit(first.no, text, "一言", PT_STATEMENT, BODY_WIDTH, 3)
         return Statement(text)
 
     def _with_heading(self, heading: str, body: list[_Line]) -> Slide | None:
@@ -411,7 +422,7 @@ class _Parser:
             if not m.group(1).strip():
                 self.add(ln.no, "箇条書きの項目が空です")
             items.append(_runs(m.group(1).strip()))
-            self.fit(ln.no, items[-1], "箇条書きの項目", 24, BODY_WIDTH - INDENT, 2)
+            self.fit(ln.no, items[-1], "箇条書きの項目", PT_BULLET, BODY_WIDTH - INDENT, 2)
         return Bullets(heading, items)
 
     # --- 図 ---
@@ -444,7 +455,7 @@ class _Parser:
                 valid = False
             else:
                 caption = _runs(cap.s)
-                self.fit(cap.no, caption, "図の説明文", 20, FIGURE_CAPTION_WIDTH, 3)
+                self.fit(cap.no, caption, "図の説明文", PT_CAPTION, FIGURE_CAPTION_WIDTH, 3)
         if len(body) > 2:
             self.add(body[2].no, "図の説明文は 1 行までです")
             valid = False
@@ -471,7 +482,7 @@ class _Parser:
         n = len(header)
         cell_width = BODY_WIDTH / n - 0.2
         for c in header:
-            self.fit(head.no, c, "表のセル", 18, cell_width, 2)
+            self.fit(head.no, c, "表のセル", PT_CELL, cell_width, 2)
         ok = True
         if not MIN_COLUMNS <= n <= MAX_COLUMNS:
             self.add(head.no, f"表の列は {MIN_COLUMNS}〜{MAX_COLUMNS} 列です（{n} 列あります）")
@@ -505,7 +516,7 @@ class _Parser:
                 ok = False
             rows.append([_runs(c) for c in cells])
             for c in cells:
-                self.fit(ln.no, c, "表のセル", 18, BODY_WIDTH / n - 0.2, 2)
+                self.fit(ln.no, c, "表のセル", PT_CELL, BODY_WIDTH / n - 0.2, 2)
         if not ok:
             return None
         return Table(heading, [_runs(c) for c in header], rows)
@@ -551,7 +562,14 @@ class _Parser:
                 if not m.group(1).strip():
                     self.add(ln.no, "箇条書きの項目が空です")
                 items.append(_runs(m.group(1).strip()))
-                self.fit(ln.no, items[-1], "2 列の箇条書きの項目", 22, COLUMN_WIDTH - INDENT, 2)
+                self.fit(
+                    ln.no,
+                    items[-1],
+                    "2 列の箇条書きの項目",
+                    PT_COLUMN_BULLET,
+                    COLUMN_WIDTH - INDENT,
+                    2,
+                )
             return BulletsBlock(items)
         stray = next((ln for ln in lines if _BULLET.match(ln.raw)), None)
         if len(lines) > 1:
@@ -568,7 +586,7 @@ class _Parser:
             self.add(only.no, what)
             return None
         text = _runs(only.s)
-        self.fit(only.no, text, "2 列の文", 22, COLUMN_WIDTH, 3)
+        self.fit(only.no, text, "2 列の文", PT_COLUMN_TEXT, COLUMN_WIDTH, 3)
         return TextBlock(text)
 
 
