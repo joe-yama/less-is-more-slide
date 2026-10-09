@@ -1,22 +1,21 @@
 # Current status
 
-Last updated: <date> (<event, e.g. "change X merged and archived">). Update this file after every archive.
+Last updated: 2026-10-09 (agentic-harness v0.4.0 を導入した). Update this file after every archive.
 
 ## Phase
 
-<!-- One line: what phase the product is in (e.g. "design", "v1 in progress", "v1 released"). -->
+設計前（ハーネスの導入のみ完了）。
 
 ## In progress
 
-<!-- The change in progress, its Issue, branch and worktree — or "none". -->
+なし。
 
 ## PO to-dos
 
-<!-- Manual steps only the PO can do (accounts, DNS, secrets, store submissions). -->
-
+- Copilot CLI を 1.0.91 以上に更新し、対話モードでこのリポジトリを信頼して `harness` プラグインを導入する（`.github/copilot/settings.json` 経由）。`copilot plugin list` で `harness` を確かめ、`harness:adopt` の手順 8 の Copilot CLI の検証を行う。
 ## Next candidates
 
-<!-- Ordered list of likely next changes and where their notes live (e.g. "Proposals" in an archived tasks.md). -->
+1. スライド作成用の Skill と Agent、プラグインとしての公開（`harness:design` で設計する）。
 
 ## Harness versions
 
@@ -24,6 +23,21 @@ Last updated: <date> (<event, e.g. "change X merged and archived">). Update this
 
 | Component | Version |
 |---|---|
-| agentic-harness | |
-| OpenSpec CLI / skills | |
-| Claude Code | |
+| agentic-harness | v0.4.0 |
+| OpenSpec CLI / skills | 1.14.1（`/opsx:propose`・`archive`・`update`・`sync`、`.agents/skills` に同じ 4 つ） |
+| Claude Code | 2.1.295 |
+| Copilot CLI | 1.0.90（`harness` プラグインは未導入） |
+
+### 検証結果（`harness:adopt` 手順 8、2026-10-09）
+
+| 項目 | 結果 |
+|---|---|
+| `rm -rf ./harness-guard-probe` | 拒否された: `BLOCKED by harness guard (rm-rf)` |
+| `git push origin main` | PO への確認が出た（`harness ask-gate (protected-push)`）。PO が誤って承認したが、`main` は `origin/main` と同一で、結果は `Everything up-to-date`（送られた変更はない） |
+| `/plugin` | `harness@agentic-harness` 0.4.0（project スコープ）が有効 |
+| スキル | `harness:design`・`harness:execute` ほか 5 つが表示される。`openspec-*` のスキルはない |
+| `.claude/commands/opsx/` | `propose.md`・`archive.md`・`update.md`・`sync.md` のみ |
+| エージェント | `harness:implementer`・`harness:reviewer` |
+| `.claude/settings.json` | プラグインの導入後も差分なし |
+| ruleset | `default-branch` |
+| Copilot CLI | 未検証（プラグイン未導入） |
