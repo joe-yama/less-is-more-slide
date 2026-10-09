@@ -13,7 +13,7 @@ Issue: #6
 
 ## 2. 表示の大きさ
 
-- [ ] 2.1 ドット数から画像の大きさを決め、PNG の拡大率の下限を 1 にする
+- [x] 2.1 ドット数から画像の大きさを決め、PNG の拡大率の下限を 1 にする
   - Files: `plugin/skills/slide/scripts/slidekit/render.py`、`tests/test_render.py`、`plugin/skills/slide/references/format.md`（図の節に、画像の大きさはドット数で決まり、16×16 は 1.2 インチ、32〜48 ドットで 2.4 インチ、長辺は最大 4.6 インチになることを 1〜2 文で書く）
   - Interface: `render.py` の、長辺のドット数を受け取って画像の長辺（インチ）を返す関数と、目標・1 ドットの上下限・長辺の上限の定数（design.md「定数の置き場所」）
   - Test first: `tests/test_render.py` が、delta spec「ドット絵の表示の大きさ」の 7 つのシナリオ（8×8 → 0.6、`icon:gear` → 1.2、32×32 と 40×40 → 2.4、64×64 → 3.2、200×200 → 4.6、32×16 → 2.4×1.2、左右 2 列の `icon:box` → 1.2、いずれもインチで差 2 EMU まで）を、できた PPTX の画像の寸法で確かめて赤になる。PNG の画素数は、いまの `test_picture_alt_text_and_size` の式を `min(64, max(1, ceil(1024 / n)))` に直し、200×200 の格子で 1000 ピクセル四方（拡大率 5）になることも確かめる（design.md「PNG の拡大率の下限を 1 にする」）

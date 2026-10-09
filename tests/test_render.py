@@ -9,7 +9,7 @@ from pptx import Presentation
 from pptx.util import Inches
 
 from slidekit.manuscript import parse
-from slidekit.render import render
+from slidekit.render import image_long_side, render
 
 FIXTURES = Path(__file__).parent / "fixtures"
 FONT = "メイリオ"
@@ -376,10 +376,62 @@ def test_picture_alt_text_and_size(pptx_path):
         assert w == h  # アイコンと見本の格子は正方形
         dots = {"歯車": 16, "ロボット": 8}[sh._element.xpath("./p:nvPicPr/p:cNvPr/@descr")[0]]
         # design.md: 長辺が 1024 以上になる整数倍、ただし 16 倍以上 64 倍以下
-        assert w == dots * min(64, max(16, math.ceil(1024 / dots)))
+        assert w == dots * min(64, max(1, math.ceil(1024 / dots)))
     # 図のレイアウト: 画像は左、説明文は右
     _, gear = pics["歯車"]
     assert gear.left == Inches(0.9)
+
+
+def grid_text(w: int, h: int) -> str:
+    return "\n".join("#" * w for _ in range(h)) + "\n"
+
+
+def pictures_of(tmp_path: Path, manuscript: str, grids: dict[str, str]) -> list:
+    for name, text in grids.items():
+        (tmp_path / name).write_text(text, encoding="utf-8")
+    out = tmp_path / "out.pptx"
+    render(parse(manuscript, tmp_path), out)
+    return [s for sl in Presentation(out).slides for s in sl.shapes if s.shape_type == 13]
+
+
+@pytest.mark.parametrize(
+    ("w", "h", "want_w", "want_h"),
+    [
+        (8, 8, 0.6, 0.6),
+        (16, 16, 1.2, 1.2),
+        (32, 32, 2.4, 2.4),
+        (40, 40, 2.4, 2.4),
+        (64, 64, 3.2, 3.2),
+        (200, 200, 4.6, 4.6),
+        (32, 16, 2.4, 1.2),
+    ],
+)
+def test_picture_display_size_follows_dots(tmp_path, w, h, want_w, want_h):
+    pics = pictures_of(tmp_path, "# 題\n---\n## 図\n![絵](g.txt)\n", {"g.txt": grid_text(w, h)})
+    assert len(pics) == 1
+    assert abs(pics[0].width - Inches(want_w)) <= 2
+    assert abs(pics[0].height - Inches(want_h)) <= 2
+
+
+def test_icon_gear_is_1_2_inches(tmp_path):
+    pics = pictures_of(tmp_path, "# 題\n---\n## 図\n![歯車](icon:gear)\n", {})
+    assert abs(pics[0].width - Inches(1.2)) <= 2 and abs(pics[0].height - Inches(1.2)) <= 2
+
+
+def test_two_column_icon_box_is_1_2_inches(tmp_path):
+    pics = pictures_of(tmp_path, "# 題\n---\n## 比べる\n- 左\n|||\n![箱](icon:box)\n", {})
+    assert abs(pics[0].width - Inches(1.2)) <= 2 and abs(pics[0].height - Inches(1.2)) <= 2
+
+
+def test_large_grid_png_scale_is_6(tmp_path):
+    pics = pictures_of(tmp_path, "# 題\n---\n## 図\n![絵](g.txt)\n", {"g.txt": grid_text(200, 200)})
+    assert pics[0].image.size == (1200, 1200)  # ceil(1024 / 200) = 6
+
+
+def test_image_long_side_function():
+    assert image_long_side(8) == pytest.approx(0.6)
+    assert image_long_side(32) == pytest.approx(2.4)
+    assert image_long_side(200) == pytest.approx(4.6)
 
 
 def test_figure_caption_right_of_picture(pptx_path):

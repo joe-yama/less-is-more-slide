@@ -65,7 +65,15 @@ CAPTION_W = 5.2
 CAPTION_GAP = 0.5
 LAYOUT_TITLE_ONLY = 5
 LAYOUT_BLANK = 6
-MIN_SCALE, MAX_SCALE, TARGET_PX = 16, 64, 1024
+MIN_SCALE, MAX_SCALE, TARGET_PX = 1, 64, 1024
+IMAGE_TARGET = 2.4
+DOT_MIN, DOT_MAX = 0.05, 0.075  # 1 ドットの寸法（インチ）の下限と上限
+
+
+def image_long_side(longest: int) -> float:
+    """長辺のドット数から、画像の長辺（インチ）を決める。"""
+    size = min(max(IMAGE_TARGET, longest * DOT_MIN), longest * DOT_MAX)
+    return min(size, IMAGE_MAX)
 
 
 def _rgb(hex6: str) -> RGBColor:
@@ -154,7 +162,7 @@ def _picture(slide, grid, alt: str, x: float, y: float) -> None:
     longest = max(grid.width, grid.height)
     scale = min(MAX_SCALE, max(MIN_SCALE, math.ceil(TARGET_PX / longest)))
     png = encode_png(grid, scale)
-    unit = IMAGE_MAX / longest
+    unit = image_long_side(longest) / longest
     pic = slide.shapes.add_picture(
         io.BytesIO(png),
         Inches(x),
