@@ -42,7 +42,7 @@ Issue: #3
   - Test first: `tests/test_icons.py` が、14 個の名前がちょうど spec の一覧であること、すべて 16×16 の正しい格子であること、`icon:gear` と相対パスの `.txt` が解決できること、存在しない名前・ファイルと `.txt` 以外の参照が `GridError` になることを確かめて赤になる
   - Review: batch B / Risk: none
 
-- [ ] 2.4 ドット絵の CLI
+- [x] 2.4 ドット絵の CLI
   - Files: `plugin/skills/slide/scripts/pixel.py`（PEP 723、依存なし）、`tests/test_pixel_cli.py`
   - Interface: `pixel.main(argv) -> int`
   - Test first: `tests/test_pixel_cli.py` が、`--list` で 14 個の名前が 1 行ずつ出ること、`icon:gear` の既定の拡大率で 256×256 の PNG ができること、違反のある格子で終了コード 1・標準エラーに理由・PNG を作らないことを確かめて赤になる
