@@ -1,10 +1,15 @@
 # Current status
 
-Last updated: 2026-10-09 (agentic-harness v0.4.0 を導入した). Update this file after every archive.
+Last updated: 2026-10-09 (add-slide-plugin をアーカイブした). Update this file after every archive.
 
 ## Phase
 
-設計前（ハーネスの導入のみ完了）。
+最初の版を公開した。プラグイン `less-is-more-slide`（Skill `slide`、Agent `writer`・`critic`）が `main` にある（PR #4）。
+
+- 開発のコマンドは `AGENTS.md` のコマンド表にある。
+  - テスト: `uv run pytest`
+  - lint: `uv run ruff check . && uv run ruff format --check .`
+- spec は `openspec/specs/` にある: `slide-generation`、`pixel-art`、`slide-plugin`。
 
 ## In progress
 
@@ -12,10 +17,13 @@ Last updated: 2026-10-09 (agentic-harness v0.4.0 を導入した). Update this f
 
 ## PO to-dos
 
+- add-slide-plugin の受け入れ: README の手順で、Claude Code と Copilot CLI の両方にマーケットプレイスからプラグインを入れる。`examples/sample.md` から作った PPTX を PowerPoint で開き、はみ出しがないか、「人が作った」ように見えるか、アイコン（cloud・people・gear）を描き直すかを判断する。
 - Copilot CLI を 1.0.91 以上に更新し、対話モードでこのリポジトリを信頼して `harness` プラグインを導入する（`.github/copilot/settings.json` 経由）。`copilot plugin list` で `harness` を確かめ、`harness:adopt` の手順 8 の Copilot CLI の検証を行う。
 ## Next candidates
 
-1. スライド作成用の Skill と Agent、プラグインとしての公開（`harness:design` で設計する）。
+1. 受け入れで見つかった問題の修正。
+2. add-slide-plugin の Proposals（`docs/changes.md` の Handed on）からの改善。python-pptx の版の固定、出力のファイルの権限、レイアウトの 16:9 化など。
+3. ハーネスの `ask-gate.sh` に `uv lock` の規則を足す提案（`docs/harness/lessons.md`）。
 
 ## Harness versions
 
