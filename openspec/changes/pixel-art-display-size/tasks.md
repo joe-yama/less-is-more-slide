@@ -6,7 +6,7 @@ Issue: #6
 
 ## 1. 格子の上限を外す
 
-- [ ] 1.1 格子の幅と高さの上限 64 を外し、利用者向けの記述を直す
+- [x] 1.1 格子の幅と高さの上限 64 を外し、利用者向けの記述を直す
   - Files: `plugin/skills/slide/scripts/slidekit/grid.py`、`tests/test_grid.py`、`plugin/skills/slide/SKILL.md`（79 行目の「1〜64 × 1〜64」）、`plugin/skills/slide/references/format.md`（「格子ファイル」の「幅と高さは 1〜64」）
   - Test first: `tests/test_grid.py` で、幅 65・高さ 65 を拒否するいまのテストを、幅 200・高さ 150 の格子を 200×150 として受け付けるテストに置き換え、赤になる（design.md「格子の大きさに上限を設けない」）。空の格子の拒否のテストは残す
   - Review: batch A / Risk: none

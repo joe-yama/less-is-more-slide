@@ -5,8 +5,6 @@ from pathlib import Path
 
 from slidekit.palette import GRID_COLORS
 
-MAX_SIZE = 64
-
 
 @dataclass(frozen=True)
 class Problem:
@@ -46,12 +44,6 @@ def parse_grid(text: str) -> Grid:
     width = len(rows[0])
     problems: list[Problem] = []
 
-    if width > MAX_SIZE:
-        problems.append(Problem(1, None, f"幅 {width} は上限 {MAX_SIZE} ドットを超えています"))
-    if len(rows) > MAX_SIZE:
-        problems.append(
-            Problem(1, None, f"高さ {len(rows)} は上限 {MAX_SIZE} ドットを超えています")
-        )
     for i, row in enumerate(rows, start=1):
         if len(row) != width:
             problems.append(Problem(i, None, f"行の長さ {len(row)} が 1 行目の {width} と違います"))
