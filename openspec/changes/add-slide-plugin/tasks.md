@@ -36,7 +36,7 @@ Issue: #3
   - Test first: `tests/test_png.py` が、8×8 を拡大率 10 で変換した PNG を標準ライブラリで復号し、80×80 であること、各ドットが 10×10 の同じ色であること、画素が 3 色と完全な透明だけであることを確かめて赤になる
   - Review: batch B / Risk: none
 
-- [ ] 2.3 同梱アイコン 14 個と参照の解決
+- [x] 2.3 同梱アイコン 14 個と参照の解決
   - Files: `plugin/skills/slide/icons/*.txt`（14 個）、`slidekit/grid.py`（`icon_names`、`resolve`）、`tests/test_icons.py`
   - Interface: `icon_names() -> list[str]`、`resolve(ref, base_dir) -> Grid`
   - Test first: `tests/test_icons.py` が、14 個の名前がちょうど spec の一覧であること、すべて 16×16 の正しい格子であること、`icon:gear` と相対パスの `.txt` が解決できること、存在しない名前・ファイルと `.txt` 以外の参照が `GridError` になることを確かめて赤になる

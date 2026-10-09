@@ -1,6 +1,7 @@
 """格子ファイルの解析と検証。"""
 
 from dataclasses import dataclass
+from pathlib import Path
 
 from slidekit.palette import GRID_COLORS
 
@@ -62,3 +63,33 @@ def parse_grid(text: str) -> Grid:
     if problems:
         raise GridError(problems)
     return Grid(width=width, height=len(rows), rows=rows)
+
+
+ICON_DIR = Path(__file__).resolve().parents[2] / "icons"
+ICON_PREFIX = "icon:"
+
+
+def icon_names() -> list[str]:
+    return sorted(p.stem for p in ICON_DIR.glob("*.txt"))
+
+
+def resolve(ref: str, base_dir: Path) -> Grid:
+    """`icon:<名前>` か、base_dir からの相対パスの `.txt` を読んで格子にする。"""
+    if ref.startswith(ICON_PREFIX):
+        name = ref[len(ICON_PREFIX) :]
+        names = icon_names()
+        if name not in names:
+            listed = "、".join(names)
+            raise GridError(
+                [Problem(1, None, f"アイコン `{name}` はありません。あるのは {listed}")]
+            )
+        path = ICON_DIR / f"{name}.txt"
+    else:
+        path = Path(base_dir) / ref
+        if path.suffix != ".txt":
+            raise GridError([Problem(1, None, f"格子ファイルは `.txt` だけです: {ref}")])
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as e:
+        raise GridError([Problem(1, None, f"格子ファイルを読めません: {ref} ({e})")]) from e
+    return parse_grid(text)
