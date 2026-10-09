@@ -74,7 +74,7 @@ Issue: #3
 
 ## 4. PPTX の生成
 
-- [ ] 4.1 6 種のレイアウトを PPTX に描く
+- [x] 4.1 6 種のレイアウトを PPTX に描く
   - Files: `plugin/skills/slide/scripts/slidekit/render.py`、`tests/test_render.py`
   - Interface: `render(deck, out_path) -> None`
   - Test first: `tests/test_render.py` が、6 種すべてを含む原稿の出力を python-pptx と XML で開き、spec の「固定の配色と書体」「装飾を持たない」「普通の PowerPoint 文書としての体裁」「強調」（色で表し太字でない）「表レイアウト」（塗りなし・横線だけ）の各シナリオ、テーマの書体がメイリオであること、画像の代替テキスト、作成日時が生成時刻であることを確かめて赤になる
