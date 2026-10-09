@@ -438,7 +438,9 @@ def test_figure_caption_right_of_picture(pptx_path):
     slide = list(Presentation(pptx_path).slides)[3]
     pic = next(s for s in slide.shapes if s.shape_type == 13)
     cap = [s for s in slide.shapes if s.has_text_frame and s.text_frame.text == "毎晩 2 時に動く。"]
-    assert cap and cap[0].left >= pic.left + pic.width
+    assert cap
+    assert abs(cap[0].left - (pic.left + pic.width + Inches(0.5))) <= 2
+    assert abs(cap[0].top - pic.top) <= 2
 
 
 # --- レイアウト ---

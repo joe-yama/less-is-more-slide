@@ -19,7 +19,7 @@ Issue: #6
   - Test first: `tests/test_render.py` が、delta spec「ドット絵の表示の大きさ」の 7 つのシナリオ（8×8 → 0.6、`icon:gear` → 1.2、32×32 と 40×40 → 2.4、64×64 → 3.2、200×200 → 4.6、32×16 → 2.4×1.2、左右 2 列の `icon:box` → 1.2、いずれもインチで差 2 EMU まで）を、できた PPTX の画像の寸法で確かめて赤になる。PNG の画素数は、いまの `test_picture_alt_text_and_size` の式を `min(64, max(1, ceil(1024 / n)))` に直し、200×200 の格子で 1200 ピクセル四方（拡大率 6）になることも確かめる（design.md「PNG の拡大率の下限を 1 にする」）
   - Review: solo / Risk: ui
 
-- [ ] 2.2 図の説明文を画像の右端に付けて置く
+- [x] 2.2 図の説明文を画像の右端に付けて置く
   - Files: `plugin/skills/slide/scripts/slidekit/render.py`、`tests/test_render.py`
   - Test first: `tests/test_render.py` の `test_figure_caption_right_of_picture` を、説明文の枠の左端 = 画像の右端 + 0.5 インチ、上端 = 画像の上端（差 2 EMU まで）を確かめるよう強めて赤になる（delta spec「図の説明文の位置」、design.md「説明文は画像の右端に付いて動く」）
   - Review: solo / Risk: ui
