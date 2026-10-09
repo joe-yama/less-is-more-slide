@@ -8,3 +8,7 @@
 !.harness/env.json
 .superpowers/
 .DS_Store
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.venv/
