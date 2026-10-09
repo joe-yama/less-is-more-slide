@@ -62,7 +62,7 @@ Issue: #3
   - Test first: `tests/test_manuscript_basic.py` が、slide-generation spec の「原稿の区切りと表紙」「一言レイアウト」「箇条書きレイアウト」「未対応の書式の拒否」「強調」「絵文字の拒否」の全シナリオと、複数の違反がすべて行番号付きで集まることを確かめて赤になる
   - Review: batch C / Risk: none
 
-- [ ] 3.3 図・表・左右 2 列
+- [x] 3.3 図・表・左右 2 列
   - Files: `slidekit/manuscript.py`、`tests/test_manuscript_layouts.py`、`tests/fixtures/`（テスト用の格子）
   - Test first: `tests/test_manuscript_layouts.py` が、spec の「図レイアウト」「表レイアウト」「左右 2 列レイアウト」の全シナリオと、図の参照先の格子の違反が原稿の行番号と格子の位置で報告されることを確かめて赤になる
   - Review: batch C / Risk: none

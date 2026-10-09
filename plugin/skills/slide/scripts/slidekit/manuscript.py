@@ -4,7 +4,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from slidekit.grid import Problem
+from slidekit.grid import Grid, GridError, Problem, resolve
 
 # Unicode 15.1 の emoji-data.txt の Extended_Pictographic の範囲（両端を含む）。
 _EXTENDED_PICTOGRAPHIC = (
@@ -67,7 +67,50 @@ class Bullets:
     items: list[Text]
 
 
-Slide = Cover | Statement | Bullets
+@dataclass(frozen=True)
+class Figure:
+    heading: str
+    alt: str
+    ref: str
+    grid: Grid
+    caption: Text | None
+
+
+@dataclass(frozen=True)
+class Table:
+    heading: str
+    header: list[Text]
+    rows: list[list[Text]]
+
+
+@dataclass(frozen=True)
+class BulletsBlock:
+    items: list[Text]
+
+
+@dataclass(frozen=True)
+class ImageBlock:
+    alt: str
+    ref: str
+    grid: Grid
+
+
+@dataclass(frozen=True)
+class TextBlock:
+    text: Text
+
+
+Block = BulletsBlock | ImageBlock | TextBlock
+
+
+@dataclass(frozen=True)
+class TwoColumn:
+    heading: str
+    left: Block
+    right: Block
+
+
+Slide = Cover | Statement | Bullets | Figure | Table | TwoColumn
 
 
 @dataclass(frozen=True)
@@ -97,6 +140,9 @@ class _Line:
 
 _EMPHASIS = re.compile(r"\*\*(.+?)\*\*")
 _BULLET = re.compile(r"^- (.*)$")
+_IMAGE = re.compile(r"^!\[([^\]]*)\]\(([^)]*)\)$")
+_TABLE_SEPARATOR_CELL = re.compile(r"^:?-+:?$")
+_COLUMN_BREAK = "|||"
 _NESTED_BULLET = re.compile(r"^\s+- ")
 _LINK = re.compile(r"\[[^\]]*\]\([^)]*\)")
 _PAIRED_STAR = re.compile(r"\*[^*]+\*")
@@ -106,6 +152,18 @@ _HTML = re.compile(r"^<[A-Za-z!/]")
 
 MAX_BULLETS = 5
 MAX_COVER_LINES = 3
+MIN_COLUMNS, MAX_COLUMNS = 2, 4
+MAX_TABLE_ROWS = 6
+MAX_BLOCK_BULLETS = 4
+
+
+def _grid_message(ref: str, p: Problem) -> str:
+    """格子の違反を、原稿の行の報告に載せる文にする。位置は格子ファイルの中のもの。"""
+    # アイコン名の誤りとファイルを読めない場合は、格子の中の位置を持たない。
+    if ref.startswith("icon:") or p.message.startswith("格子ファイル"):
+        return p.message
+    where = f"{p.line} 行目" if p.col is None else f"{p.line} 行目 {p.col} 文字目"
+    return f"格子ファイル {ref} の {where}: {p.message}"
 
 
 def _runs(text: str) -> Text:
@@ -193,6 +251,8 @@ class _Parser:
             elif _HTML.match(s):
                 self.add(ln.no, "HTML は使えません")
                 tainted = True
+            if _IMAGE.match(s):
+                continue  # 画像の行は参照の検証で見る（リンクとは別物）
             if "`" in s and not s.startswith("```"):
                 self.add(ln.no, "インラインコード（`` ` ``）は使えません")
             if _LINK.search(s):
@@ -292,6 +352,12 @@ class _Parser:
             if _NESTED_BULLET.match(ln.raw):
                 self.add(ln.no, "入れ子の箇条書きは使えません")
                 return None
+        if any(ln.s == _COLUMN_BREAK for ln in body):
+            return self._two_columns(heading, body)
+        if _IMAGE.match(body[0].s):
+            return self._figure(heading, body)
+        if body[0].s.startswith("|"):
+            return self._table(heading, body)
         if len(body) == 1:
             self.add(
                 body[0].no,
@@ -322,6 +388,154 @@ class _Parser:
                 self.add(ln.no, "箇条書きの項目が空です")
             items.append(_runs(m.group(1).strip()))
         return Bullets(heading, items)
+
+    # --- 図 ---
+
+    def _image(self, ln: _Line) -> tuple[str, str, Grid] | None:
+        """画像の行を検証して (説明, 参照, 格子) にする。違反は原稿の行番号で報告する。"""
+        m = _IMAGE.match(ln.s)
+        assert m is not None
+        alt, ref = m.group(1).strip(), m.group(2).strip()
+        ok = True
+        if not alt:
+            self.add(ln.no, "画像の説明が空です。`![説明](参照)` の説明は代替テキストになります")
+            ok = False
+        try:
+            grid = resolve(ref, self.base_dir)
+        except GridError as e:
+            for p in e.problems:
+                self.add(ln.no, _grid_message(ref, p))
+            return None
+        return (alt, ref, grid) if ok else None
+
+    def _figure(self, heading: str, body: list[_Line]) -> Figure | None:
+        image = self._image(body[0])
+        caption: Text | None = None
+        valid = True
+        if len(body) >= 2:
+            cap = body[1]
+            if _IMAGE.match(cap.s) or _BULLET.match(cap.raw) or cap.s.startswith("|"):
+                self.add(cap.no, "図は画像 1 つと、任意の 1 行の説明文だけです")
+                valid = False
+            else:
+                caption = _runs(cap.s)
+        if len(body) > 2:
+            self.add(body[2].no, "図の説明文は 1 行までです")
+            valid = False
+        if image is None or not valid:
+            return None
+        alt, ref, grid = image
+        return Figure(heading, alt, ref, grid, caption)
+
+    # --- 表 ---
+
+    @staticmethod
+    def _cells(s: str) -> list[str]:
+        s = s.strip()
+        s = s.removeprefix("|").removesuffix("|")
+        return [c.strip() for c in s.split("|")]
+
+    def _table(self, heading: str, body: list[_Line]) -> Table | None:
+        head = body[0]
+        for ln in body:
+            if not ln.s.startswith("|"):
+                self.add(ln.no, "表の行は `|` で始めます。表と他の内容は混ぜられません")
+                return None
+        header = self._cells(head.s)
+        n = len(header)
+        ok = True
+        if not MIN_COLUMNS <= n <= MAX_COLUMNS:
+            self.add(head.no, f"表の列は {MIN_COLUMNS}〜{MAX_COLUMNS} 列です（{n} 列あります）")
+            ok = False
+        if len(body) < 2:
+            self.add(head.no, "表には見出し行の次に区切り行（`|---|---|`）が要ります")
+            return None
+        sep = body[1]
+        sep_cells = self._cells(sep.s)
+        if not all(_TABLE_SEPARATOR_CELL.match(c) for c in sep_cells):
+            self.add(sep.no, "表の見出し行の次は区切り行（`|---|---|`）にしてください")
+            return None
+        if len(sep_cells) != n:
+            self.add(sep.no, f"区切り行の列数 {len(sep_cells)} が見出し行の {n} と違います")
+            ok = False
+        data = body[2:]
+        if not data:
+            self.add(head.no, "表には本文の行が 1 行以上要ります")
+            return None
+        if len(data) > MAX_TABLE_ROWS:
+            self.add(
+                data[MAX_TABLE_ROWS].no,
+                f"表の本文は {MAX_TABLE_ROWS} 行までです（{MAX_TABLE_ROWS + 1} 行目）",
+            )
+            ok = False
+        rows: list[list[Text]] = []
+        for ln in data:
+            cells = self._cells(ln.s)
+            if len(cells) != n:
+                self.add(ln.no, f"行の列数 {len(cells)} が見出し行の {n} と違います")
+                ok = False
+            rows.append([_runs(c) for c in cells])
+        if not ok:
+            return None
+        return Table(heading, [_runs(c) for c in header], rows)
+
+    # --- 左右 2 列 ---
+
+    def _two_columns(self, heading: str, body: list[_Line]) -> TwoColumn | None:
+        breaks = [i for i, ln in enumerate(body) if ln.s == _COLUMN_BREAK]
+        ok = True
+        if len(breaks) > 1:
+            self.add(body[breaks[1]].no, "`|||` は 1 つだけです")
+            ok = False
+        brk = body[breaks[0]]
+        left_lines = body[: breaks[0]]
+        right_end = breaks[1] if len(breaks) > 1 else len(body)
+        right_lines = body[breaks[0] + 1 : right_end]
+        left = self._block(left_lines, brk, "左")
+        right = self._block(right_lines, brk, "右")
+        if not ok or left is None or right is None:
+            return None
+        return TwoColumn(heading, left, right)
+
+    def _block(self, lines: list[_Line], brk: _Line, side: str) -> Block | None:
+        if not lines:
+            self.add(brk.no, f"{side}の塊が空です。`|||` の{side}に内容を書いてください")
+            return None
+        for ln in lines:
+            if _NESTED_BULLET.match(ln.raw):
+                self.add(ln.no, "入れ子の箇条書きは使えません")
+                return None
+        what = "各塊は、箇条書き（1〜4 個）、画像の行 1 つ、1 行の文のどれか 1 つだけです"
+        if all(_BULLET.match(ln.raw) for ln in lines):
+            if len(lines) > MAX_BLOCK_BULLETS:
+                self.add(
+                    lines[MAX_BLOCK_BULLETS].no,
+                    f"{side}の塊の箇条書きは {MAX_BLOCK_BULLETS} 個までです",
+                )
+                return None
+            items: list[Text] = []
+            for ln in lines:
+                m = _BULLET.match(ln.raw)
+                assert m is not None
+                if not m.group(1).strip():
+                    self.add(ln.no, "箇条書きの項目が空です")
+                items.append(_runs(m.group(1).strip()))
+            return BulletsBlock(items)
+        stray = next((ln for ln in lines if _BULLET.match(ln.raw)), None)
+        if len(lines) > 1:
+            extra = lines[1] if stray is None or stray is lines[0] else stray
+            self.add(extra.no, what)
+            return None
+        only = lines[0]
+        if _IMAGE.match(only.s):
+            image = self._image(only)
+            if image is None:
+                return None
+            return ImageBlock(*image)
+        if only.s.startswith("|"):
+            self.add(only.no, what)
+            return None
+        return TextBlock(_runs(only.s))
 
 
 def parse(text: str, base_dir: Path) -> Deck:
