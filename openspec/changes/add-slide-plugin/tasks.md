@@ -174,3 +174,10 @@ Issue: #3
 - （batch E レビュー Minor）`tests/test_readme.py` の uv が必要なことの確認（`uv.*(必要|入れ)`）は、uv の自動導入の文などでも通り、弱い。
 - （batch E レビュー Minor）`tests/fixtures/ai_tells.md` には、仕込んだ 5 種のほかに 6 番（具体のなさ）と 5 番（揃いすぎ）の一部も含まれる。6.2 の数え方は tasks.md の補足で 5 種に限った。
 - （batch E レビュー Minor）`tests/test_skill_docs.py` と `tests/test_examples.py` は生成器を `sys.executable` で呼ぶため、PEP 723 の見出しを確かめない。CI の `uv run --no-project` の手順が補う。
+- （最終レビュー Minor）枠の幅（`BODY_W`・`INDENT`・`COLUMN_W`・`CAPTION_W`）が `render.py` と `manuscript.py` の 2 か所にある。`fit.py` の `PT_*` の隣にまとめられる。
+- （最終レビュー Minor）`build.py` と `pixel.py` は `tempfile.mkstemp` で書くため、出力のファイルの権限が 0600 になる。共有フォルダで他の人が開けない。umask に沿った権限にする案がある。
+- （最終レビュー Minor）利用者の実行時の依存 `python-pptx` の版を固定していない。`render.py` は python-pptx の内部の API を使うので、`python-pptx>=1.0,<2` に絞る案がある。
+- （最終レビュー Minor）`##見出し`（空白なし）は一言のスライドとして文字のまま出る。「`## ` の後に空白」と理由を出して拒否する案がある。
+- （最終レビュー Minor）Claude Code の sandbox は `~/.cache/uv` への書き込みを止める。SKILL.md の「生成する」に `UV_CACHE_DIR` の 1 行を足す案がある。
+- （最終レビュー Minor）`docProps/app.xml` のスライド数が 0 のまま。PowerPoint が保存時に書き直す。
+- （6.2 の実装役の提案）Copilot CLI の点検役は引用を「…」で縮めることがある。点検役の指示で原文どおりの引用を求める案がある。
