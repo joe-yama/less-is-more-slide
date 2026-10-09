@@ -154,3 +154,8 @@ Issue: #3
 - （batch A レビュー Minor）CI の `astral-sh/setup-uv` に `enable-cache` を付けると、依存の取得が速くなる。
 - （1.3 レビュー Minor）`AGENTS.md` の「The first change that introduces the stack adds ...」の文は、スタックが入った今は古い。現在の手順を書く文に改められる。
 - （1.3 レビュー Minor）編集ごとの lint フックは `ruff check` だけで、整形の違反は CI の `ruff format --check` で初めて分かる。フックで整形も確かめる案がある。
+- （batch B レビュー Minor）`pixel.py --scale abc` は argparse の使い方の誤りとして終了コード 2 を返す。spec の終了コード 1 に揃える案がある。
+- （batch B レビュー Minor）`pixel.py` の出力先のフォルダがないと、Python のトレースバックが出る。日本語の理由を 1 行出す案がある。
+- （batch B レビュー Minor）格子の行分けに `splitlines` を使っており、U+2028 などでも行が分かれる。`\n` だけで分ける案がある。
+- （batch B レビュー Minor）64×64 の格子を拡大率 64 で変換すると、メモリ上に約 67 MB の画素を作る。行ごとに組み立てる案がある。
+- （batch B レビュー Minor）同梱アイコンの cloud・people・gear は形が粗い。PO の受け入れで描き直すかを決める。
