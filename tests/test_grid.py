@@ -45,19 +45,14 @@ def test_rejects_short_second_row():
     assert [p.line for p in exc.value.problems] == [2]
 
 
-def test_rejects_width_65():
-    with pytest.raises(GridError):
-        parse_grid("." * 65)
+def test_accepts_large_grid_200x150():
+    grid = parse_grid("\n".join(["#" * 200] * 150))
+    assert (grid.width, grid.height) == (200, 150)
 
 
 def test_accepts_width_64_and_height_64():
     assert parse_grid("#" * 64).width == 64
     assert parse_grid("\n".join(["#"] * 64)).height == 64
-
-
-def test_rejects_height_65():
-    with pytest.raises(GridError):
-        parse_grid("\n".join(["#"] * 65))
 
 
 def test_rejects_empty():
