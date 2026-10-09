@@ -30,7 +30,7 @@ Issue: #3
   - Test first: `tests/test_grid.py` が、8×8 の正しい格子の受理、3 行目 5 文字目の `x` の拒否（行・文字の位置と使える文字を理由に含む）、短い 2 行目の拒否、幅 65 の拒否、末尾の空行の無視を確かめて赤になる
   - Review: batch B / Risk: none
 
-- [ ] 2.2 格子から PNG を作る
+- [x] 2.2 格子から PNG を作る
   - Files: `plugin/skills/slide/scripts/slidekit/png.py`、`tests/test_png.py`
   - Interface: `encode_png(grid, scale) -> bytes`
   - Test first: `tests/test_png.py` が、8×8 を拡大率 10 で変換した PNG を標準ライブラリで復号し、80×80 であること、各ドットが 10×10 の同じ色であること、画素が 3 色と完全な透明だけであることを確かめて赤になる
