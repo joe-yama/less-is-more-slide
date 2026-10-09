@@ -13,8 +13,6 @@ Last updated: 2026-10-09 (agentic-harness v0.4.0 を導入した). Update this f
 ## PO to-dos
 
 - Copilot CLI を 1.0.91 以上に更新し、対話モードでこのリポジトリを信頼して `harness` プラグインを導入する（`.github/copilot/settings.json` 経由）。`copilot plugin list` で `harness` を確かめ、`harness:adopt` の手順 8 の Copilot CLI の検証を行う。
-- ask-gate の確認を、bypass permissions 以外のモード（default または auto）で一度確かめる。`git push origin main` で `harness ask-gate (protected-push)` の確認が出れば拒否する。
-
 ## Next candidates
 
 1. スライド作成用の Skill と Agent、プラグインとしての公開（`harness:design` で設計する）。
@@ -35,7 +33,7 @@ Last updated: 2026-10-09 (agentic-harness v0.4.0 を導入した). Update this f
 | 項目 | 結果 |
 |---|---|
 | `rm -rf ./harness-guard-probe` | 拒否された: `BLOCKED by harness guard (rm-rf)` |
-| `git push origin main` | ask-gate は `permissionDecision: ask`（`harness ask-gate (protected-push)`）を返した。ただしセッションが bypass permissions モードだったため確認は出ずに実行された（`main` は `origin/main` と同一で、送られた変更はない）。hook のスクリプトに同じ入力を渡して判定を確認した |
+| `git push origin main` | PO への確認が出た（`harness ask-gate (protected-push)`）。PO が誤って承認したが、`main` は `origin/main` と同一で、結果は `Everything up-to-date`（送られた変更はない） |
 | `/plugin` | `harness@agentic-harness` 0.4.0（project スコープ）が有効 |
 | スキル | `harness:design`・`harness:execute` ほか 5 つが表示される。`openspec-*` のスキルはない |
 | `.claude/commands/opsx/` | `propose.md`・`archive.md`・`update.md`・`sync.md` のみ |
