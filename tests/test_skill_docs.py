@@ -117,3 +117,11 @@ def test_writing_lists_the_twelve_ai_tells():
     assert [int(n) for n, _ in numbered] == list(range(1, 13))
     for (_, title), key in zip(numbered, AI_TELLS, strict=True):
         assert key in title, (title, key)
+
+
+def test_skill_tells_the_caller_to_pass_the_skill_folder_path():
+    text = SKILL.read_text(encoding="utf-8")
+    assert "絶対パス" in text
+    for agent in ("writer", "critic"):
+        line = next(ln for ln in text.splitlines() if f"Agent `{agent}`" in ln)
+        assert "Skill のフォルダの絶対パス" in line, agent

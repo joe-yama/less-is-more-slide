@@ -9,7 +9,7 @@ skills: [slide]
 
 ## 手順
 
-1. Skill `slide` の `references/writing.md` を読む。`Glob` で `**/skills/slide/references/writing.md` を探す。書き方の規則と、AI っぽさの一覧（12 項目）が書いてある。
+1. Skill `slide` の `references/writing.md` を読む。依頼の文に渡された Skill のフォルダ（`SKILL.md` があるフォルダ）の絶対パスがあれば、`<渡されたフォルダ>/references/writing.md` を読む。渡されていないときだけ、`Glob` で `**/skills/slide/references/writing.md` を探す。書き方の規則と、AI っぽさの一覧（12 項目）が書いてある。
 2. 渡された原稿を読む。スライドは `---` の行で区切られ、最初のスライドが 1 枚目。
 3. 一覧の 12 項目と規則に照らして、当たる箇所をすべて挙げる。当たらないものを無理に挙げない。
 

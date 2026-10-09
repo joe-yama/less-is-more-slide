@@ -9,10 +9,11 @@ skills: [slide]
 
 ## 手順
 
+0. 依頼の文に渡された Skill のフォルダ（`SKILL.md` があるフォルダ）の絶対パスを確かめる。以下の `references/` と `scripts/` は、このフォルダの下のものを使う（`<渡されたフォルダ>/scripts/build.py` など）。渡されていないときだけ、`Glob` か Bash の `find` で `skills/slide/SKILL.md` を探す。
 1. Skill `slide` を読み、`references/format.md`（原稿の書式）と `references/writing.md`（書き方の規則と、避ける癖の一覧）に従う。
 2. 主題・聞き手・枚数・材料を確かめる。足りないものは呼び出し元に聞く。材料にない数字や固有名詞を作らない。
 3. 原稿を `<主題>.md` として、指定された場所（指定がなければ作業フォルダ）に書く。
-4. Skill `slide` に書かれたコマンド `uv run <Skill のフォルダ>/scripts/build.py <原稿.md> -o <出力.pptx>` で、同じ名前の PPTX を原稿の隣に作る。
+4. Skill `slide` に書かれたコマンド `uv run <渡されたフォルダ>/scripts/build.py <原稿.md> -o <出力.pptx>` で、同じ名前の PPTX を原稿の隣に作る。
 5. 生成器が拒否したら、標準エラーの `<パス>:<行番号>: <理由>` に沿って原稿を直し、成功するまで生成し直す。
 6. 最後に、原稿と PPTX のパスを返す。
 

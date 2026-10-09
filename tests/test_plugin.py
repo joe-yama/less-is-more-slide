@@ -94,3 +94,14 @@ def test_ai_tells_fixture_plants_five_kinds():
     }
     for n, needle in planted.items():
         assert needle in text, n
+
+
+def test_agents_use_the_skill_folder_path_given_in_the_message_first():
+    for path in (WRITER, CRITIC):
+        _, body = frontmatter(path)
+        assert "渡された Skill のフォルダ" in body, path.name
+        assert body.index("渡された Skill のフォルダ") < body.index("探す"), path.name
+    _, writer = frontmatter(WRITER)
+    assert "<渡されたフォルダ>/scripts/build.py" in writer
+    _, critic = frontmatter(CRITIC)
+    assert "<渡されたフォルダ>/references/writing.md" in critic
