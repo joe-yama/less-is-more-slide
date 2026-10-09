@@ -6,13 +6,13 @@ Issue: #3
 
 ## 1. 開発基盤
 
-- [ ] 1.1 開発用の Python 環境と色の定数を作る
+- [x] 1.1 開発用の Python 環境と色の定数を作る
   - Files: `pyproject.toml`、`uv.lock`、`LICENSE`、`plugin/skills/slide/scripts/slidekit/__init__.py`、`plugin/skills/slide/scripts/slidekit/palette.py`、`tests/test_palette.py`
   - Interface: `slidekit.palette` の `PAPER`・`INK`・`GRAY`・`ACCENT`・`GRID_COLORS`（design.md「Interface」）
   - Test first: `tests/test_palette.py` が 4 色の値と、格子の 4 文字 → 色（`.` は `None`）の対応を確かめて赤になる
   - Review: batch A / Risk: none（`uv.lock` の作成は lockfile を変える導入なので PO の承認を待つ。依存は design.md「新しい依存」の 3 つだけ）
 
-- [ ] 1.2 CI の job `check` に Python の手順を足す
+- [x] 1.2 CI の job `check` に Python の手順を足す
   - Files: `.github/workflows/ci.yml`
   - Verify: push 後の CI で job `check` が緑になり、ログに `uv sync --locked`、`ruff check`、`ruff format --check`、`pytest` の各手順が出る。job 名 `check` は変わっていない（`grep -n '^  check:' .github/workflows/ci.yml` が 1 行出る）
   - Review: batch A / Risk: none

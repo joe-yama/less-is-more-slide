@@ -37,4 +37,10 @@ jobs:
             echo "$bad"
             exit 1
           fi
-      # The first change adds the stack's setup, lint, typecheck, test and build steps here.
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - name: Install dependencies
+        run: uv sync --locked
+      - name: Lint
+        run: uv run ruff check . && uv run ruff format --check .
+      - name: Test
+        run: uv run pytest
