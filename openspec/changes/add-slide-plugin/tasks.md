@@ -103,7 +103,7 @@ Issue: #3
   - Test first: `tests/test_skill_docs.py` が、SKILL.md と format.md の原稿の例（コードブロック）をすべて生成器に通して成功すること、6 種のレイアウトの書き方がそれぞれ載っていること、SKILL.md のコマンドが design.md の形（`uv run <Skill のフォルダ>/scripts/...`）であること、writing.md に AI っぽさの一覧の 12 項目があることを確かめて赤になる
   - Review: batch E / Risk: none
 
-- [ ] 5.3 2 つの Agent とマニフェスト
+- [x] 5.3 2 つの Agent とマニフェスト
   - Files: `plugin/agents/writer.md`、`plugin/agents/critic.md`、`plugin/.claude-plugin/plugin.json`、`.claude-plugin/marketplace.json`、`tests/test_plugin.py`、`tests/fixtures/ai_tells.md`（AI っぽさを 5 種仕込んだ原稿。6.2 で使う）
   - Test first: `tests/test_plugin.py` が、2 つのマニフェストが JSON として正しく spec の項目を持つこと、マーケットプレイスがプラグインを 1 つだけ載せ source が `./plugin` であること、critic の `tools` が Read・Glob・Grep だけであること、writer と critic が Skill `slide` を参照することを確かめて赤になる
   - Review: batch E / Risk: none

@@ -1,0 +1,10 @@
+{
+  "name": "less-is-more-slide",
+  "version": "0.1.0",
+  "description": "人が作ったように見える装飾のないスライド（PPTX）を、原稿から作る Skill と、作成役・点検役の Agent",
+  "author": { "name": "joe-yama" },
+  "homepage": "https://github.com/joe-yama/less-is-more-slide",
+  "repository": "https://github.com/joe-yama/less-is-more-slide",
+  "license": "MIT",
+  "keywords": ["slide", "pptx", "presentation"]
+}
