@@ -17,7 +17,7 @@ Issue: #3
   - Verify: push 後の CI で job `check` が緑になり、ログに `uv sync --locked`、`ruff check`、`ruff format --check`、`pytest` の各手順が出る。job 名 `check` は変わっていない（`grep -n '^  check:' .github/workflows/ci.yml` が 1 行出る）
   - Review: batch A / Risk: none
 
-- [ ] 1.3 コマンドを記録し、ハーネスの設定値を PO に渡す
+- [x] 1.3 コマンドを記録し、ハーネスの設定値を PO に渡す
   - Files: `AGENTS.md`（コマンド表）、スクラッチパッドに `.claude/settings.json` の全文案と `.harness/env.json` の全文案（コミットしない）
   - Verify: `AGENTS.md` のコマンド表に lint（`uv run ruff check`、パターン `\.py$`）とテスト（`uv run pytest`）がある。PO に 2 つのファイルの配置を依頼し、配置後に `.py` を 1 つ編集して lint のフックが動くことを確かめる。配置を待たずに次のタスクへ進んでよい（design.md「ハーネスの設定は PO が置く」）
   - Review: solo / Risk: security（ハーネスの設定）

@@ -32,8 +32,8 @@ Tests green (show the command and output), lint passes, `tasks.md` updated, ever
 
 | Purpose | Command |
 |---|---|
-| Lint one file (hook) | set by the first change |
-| Test | set by the first change |
+| Lint one file (hook) | `uv run ruff check` (the hook appends the file path; pattern `\.py$`) |
+| Test | `uv run pytest` |
 | Changes and specs | `openspec list`, `openspec list --specs` |
 
 The first change that introduces the stack adds its lint, typecheck, test and build commands here, to `.claude/settings.json` (`HARNESS_LINT_CMD`, `HARNESS_TEST_CMD`) and to the CI job `check`. Copilot CLI hooks read `HARNESS_LINT_CMD` and `HARNESS_TEST_CMD` from `.harness/env.json`, which the guard keeps agents out of: ask the PO to add them to `.harness/env.json`. No dependencies or scaffolding before the design is approved.
