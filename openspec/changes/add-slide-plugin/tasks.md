@@ -56,7 +56,7 @@ Issue: #3
   - Test first: `tests/test_fit.py` が、全角 1.0em・半角 0.6em の見積もりと、design.md の見出しの枠で全角 15 文字が 1 行・60 文字が 2 行以上になることを確かめて赤になる
   - Review: batch C / Risk: none
 
-- [ ] 3.2 原稿の区切り・表紙・一言・箇条書き・強調・絵文字・未対応の書式
+- [x] 3.2 原稿の区切り・表紙・一言・箇条書き・強調・絵文字・未対応の書式
   - Files: `plugin/skills/slide/scripts/slidekit/manuscript.py`、`tests/test_manuscript_basic.py`
   - Interface: `ManuscriptError`、`parse(text, base_dir) -> Deck`
   - Test first: `tests/test_manuscript_basic.py` が、slide-generation spec の「原稿の区切りと表紙」「一言レイアウト」「箇条書きレイアウト」「未対応の書式の拒否」「強調」「絵文字の拒否」の全シナリオと、複数の違反がすべて行番号付きで集まることを確かめて赤になる
