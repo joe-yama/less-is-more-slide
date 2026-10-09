@@ -24,7 +24,7 @@ Issue: #3
 
 ## 2. ドット絵
 
-- [ ] 2.1 格子ファイルの解析と検証
+- [x] 2.1 格子ファイルの解析と検証
   - Files: `plugin/skills/slide/scripts/slidekit/grid.py`、`tests/test_grid.py`
   - Interface: `Problem`、`GridError`、`Grid`、`parse_grid`
   - Test first: `tests/test_grid.py` が、8×8 の正しい格子の受理、3 行目 5 文字目の `x` の拒否（行・文字の位置と使える文字を理由に含む）、短い 2 行目の拒否、幅 65 の拒否、末尾の空行の無視を確かめて赤になる
