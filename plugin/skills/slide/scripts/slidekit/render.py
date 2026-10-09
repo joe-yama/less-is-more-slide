@@ -15,6 +15,9 @@ from pptx.oxml import parse_xml
 from pptx.util import Emu, Inches, Pt
 
 from slidekit.fit import (
+    BODY_BOX_H,
+    BULLET_GAP_PT,
+    CELL_MARGIN_V,
     PT_BULLET,
     PT_CAPTION,
     PT_CELL,
@@ -25,6 +28,7 @@ from slidekit.fit import (
     PT_HEADING,
     PT_PAGE_NUMBER,
     PT_STATEMENT,
+    TABLE_ROW_H,
 )
 from slidekit.manuscript import (
     Block,
@@ -59,7 +63,6 @@ COLUMN_W = 5.5
 COLUMN_GAP = 0.53
 CAPTION_W = 5.2
 CAPTION_GAP = 0.5
-ROW_H = 0.6
 LAYOUT_TITLE_ONLY = 5
 LAYOUT_BLANK = 6
 MIN_SCALE, MAX_SCALE, TARGET_PX = 16, 64, 1024
@@ -188,8 +191,8 @@ def _statement(slide, s: Statement) -> None:
 
 
 def _bullets(slide, s: Bullets) -> None:
-    tf = _textbox(slide, "箇条書き", MARGIN_X, BODY_TOP, BODY_W, 4.9)
-    _paragraphs(tf, s.items, PT_BULLET, INK, True, gap=12)
+    tf = _textbox(slide, "箇条書き", MARGIN_X, BODY_TOP, BODY_W, BODY_BOX_H)
+    _paragraphs(tf, s.items, PT_BULLET, INK, True, gap=BULLET_GAP_PT)
 
 
 def _figure(slide, s: Figure) -> None:
@@ -213,7 +216,12 @@ def _line_xml(side: str, visible: bool) -> str:
 def _table(slide, s: Table) -> None:
     n_rows, n_cols = len(s.rows) + 1, len(s.header)
     frame = slide.shapes.add_table(
-        n_rows, n_cols, Inches(MARGIN_X), Inches(BODY_TOP), Inches(BODY_W), Inches(ROW_H * n_rows)
+        n_rows,
+        n_cols,
+        Inches(MARGIN_X),
+        Inches(BODY_TOP),
+        Inches(BODY_W),
+        Inches(TABLE_ROW_H * n_rows),
     )
     frame.name = "表"
     table = frame.table
@@ -224,13 +232,13 @@ def _table(slide, s: Table) -> None:
     for col in table.columns:
         col.width = col_w
     for r in table.rows:
-        r.height = Inches(ROW_H)
+        r.height = Inches(TABLE_ROW_H)
     grid = [s.header, *s.rows]
     for ri, row in enumerate(grid):
         for ci, text in enumerate(row):
             cell = table.cell(ri, ci)
             cell.margin_left = cell.margin_right = Inches(0.1)
-            cell.margin_top = cell.margin_bottom = Inches(0.05)
+            cell.margin_top = cell.margin_bottom = Inches(CELL_MARGIN_V)
             cell.vertical_anchor = MSO_ANCHOR.MIDDLE
             cell.fill.background()
             _fill_paragraph(cell.text_frame.paragraphs[0], text, PT_CELL, GRAY if ri == 0 else INK)
@@ -243,12 +251,12 @@ def _table(slide, s: Table) -> None:
 
 def _block(slide, b: Block, x: float) -> None:
     if isinstance(b, BulletsBlock):
-        tf = _textbox(slide, "箇条書き", x, BODY_TOP, COLUMN_W, 4.9)
+        tf = _textbox(slide, "箇条書き", x, BODY_TOP, COLUMN_W, BODY_BOX_H)
         _paragraphs(tf, b.items, PT_COLUMN_BULLET, INK, True, gap=10)
     elif isinstance(b, ImageBlock):
         _picture(slide, b.grid, b.alt, x, BODY_TOP)
     elif isinstance(b, TextBlock):
-        tf = _textbox(slide, "文", x, BODY_TOP, COLUMN_W, 4.9)
+        tf = _textbox(slide, "文", x, BODY_TOP, COLUMN_W, BODY_BOX_H)
         _paragraphs(tf, [b.text], PT_COLUMN_TEXT, INK, False)
 
 

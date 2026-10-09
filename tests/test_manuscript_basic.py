@@ -236,3 +236,9 @@ def test_all_violations_are_collected_in_line_order():
         "### 小見出し\n"  # 14
     )
     assert lines_of(text) == [3, 12, 14]
+
+
+def test_image_line_in_cover_is_rejected_with_its_line_number():
+    ps = problems_of("# 題\n![絵](icon:gear)\n")
+    assert [p.line for p in ps] == [2]
+    assert "表紙に画像は置けません" in ps[0].message

@@ -109,3 +109,53 @@ def test_every_overflowing_item_is_reported():
     n = capacity(24, BODY - 0.4, 2) + 1
     text = f"# 題\n---\n## 見出し\n- {zen(n)}\n- a\n- {zen(n)}\n"
     assert lines_of(text) == [4, 6]
+
+
+# --- 枠の高さ（design.md「2026-10-09 枠の高さも判定する」）---
+# 箇条書きの枠は 4.9in = 352.8pt。24pt の 1 行は 36pt、項目の間は 12pt。
+# 項目 5 個の合計は 36 × 行数 + 48 なので、行数 8 まで収まり、9 で収まらない。
+
+
+def bullets_text(line_counts: list[int]) -> str:
+    cap = capacity(24, BODY - 0.4, 1)
+    return "# 題\n---\n## 見出し\n" + "".join(f"- {zen(cap * n)}\n" for n in line_counts)
+
+
+def test_bullets_that_just_fit_the_box_height_pass():
+    parse(bullets_text([2, 2, 2, 1, 1]), Path("."))
+
+
+def test_one_more_line_in_bullets_is_rejected_at_the_first_item_that_does_not_fit():
+    # 2,2,2,2,1 行。4 項目目までは 324pt で収まり、5 項目目で 372pt になる。行は 8。
+    assert lines_of(bullets_text([2, 2, 2, 2, 1])) == [8]
+
+
+def test_height_rejection_names_the_reason_in_japanese():
+    with pytest.raises(ManuscriptError) as e:
+        parse(bullets_text([2, 2, 2, 2, 2]), Path("."))
+    assert "高さ" in e.value.problems[0].message
+
+
+# 表の行の高さは max(0.6in, 行数 × 18pt × 1.5 ÷ 72 + 0.1in)。2 列の 1 行は全角 22 文字、2 行で 44 文字。
+# 枠は 4.9in。見出し行 + 本文 6 行 = 7 行で、2 行の行が 2 つなら 4.7in、3 つなら 4.95in。
+
+
+def table_text(two_line_rows: set[int]) -> str:
+    one, two = zen(10), zen(44)
+    rows = [f"| {two if i in two_line_rows else one} | {one} |\n" for i in range(1, 7)]
+    return "# 題\n---\n## 見出し\n| 項目 | 値 |\n|---|---|\n" + "".join(rows)
+
+
+def test_table_that_just_fits_the_box_height_passes():
+    parse(table_text({1, 2}), Path("."))
+
+
+def test_table_one_two_line_row_more_is_rejected_at_the_first_row_that_does_not_fit():
+    # 本文の 1〜3 行目が 2 行。6 行目（原稿の 11 行目）で 4.95in になる。
+    assert lines_of(table_text({1, 2, 3})) == [11]
+
+
+def test_table_header_row_height_counts_toward_the_budget():
+    # 見出し行が 2 行なら、本文の 2 行の行が 2 つでも 4.95in になり、最後の行（11 行目）で溢れる。
+    text = table_text({1, 2}).replace("| 項目 | 値 |", f"| {zen(44)} | 値 |")
+    assert lines_of(text) == [11]

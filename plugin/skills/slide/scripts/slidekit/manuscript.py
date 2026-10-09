@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from slidekit.fit import (
+    BODY_BOX_H,
+    BULLET_GAP_PT,
     PT_BULLET,
     PT_CAPTION,
     PT_CELL,
@@ -15,6 +17,8 @@ from slidekit.fit import (
     PT_HEADING,
     PT_STATEMENT,
     line_count,
+    table_row_height_in,
+    text_height_in,
 )
 from slidekit.grid import Grid, GridError, Problem, resolve
 
@@ -162,6 +166,7 @@ _HEADING3 = re.compile(r"^#{3,6}(\s|$)")
 _NUMBERED = re.compile(r"^\d+\.(\s|$)")
 _HTML = re.compile(r"^<[A-Za-z!/]")
 
+_EPS = 1e-9
 MAX_BULLETS = 5
 MAX_COVER_LINES = 3
 MIN_COLUMNS, MAX_COLUMNS = 2, 4
@@ -209,8 +214,8 @@ class _Parser:
 
     def fit(
         self, no: int, text: str | Text, label: str, pt: float, width: float, max_lines: int
-    ) -> None:
-        """枠に収まらない文字を拒否する（強調の記号は幅に数えない）。"""
+    ) -> int:
+        """枠に収まらない文字を拒否する（強調の記号は幅に数えない）。行数を返す。"""
         plain = text if isinstance(text, str) else "".join(r.text for r in text)
         n = line_count(plain, pt, width)
         if n > max_lines:
@@ -218,6 +223,7 @@ class _Parser:
                 no,
                 f"{label}が長すぎます（{pt:g}pt の枠で {n} 行、上限は {max_lines} 行）。短くしてください",
             )
+        return n
 
     # --- 全体 ---
 
@@ -324,6 +330,10 @@ class _Parser:
             s = ln.s
             if s.startswith("# "):
                 self.add(ln.no, "`# ` の見出しは表紙のタイトルの 1 行だけです")
+            elif _IMAGE.match(s):
+                self.add(
+                    ln.no, "表紙に画像は置けません。表紙に書けるのはタイトルと、その後の文だけです"
+                )
             elif s.startswith(("## ", "|")) or _BULLET.match(ln.raw):
                 self.add(ln.no, "表紙に書けるのはタイトルと、その後の文だけです")
             elif i >= MAX_COVER_LINES:
@@ -416,13 +426,27 @@ class _Parser:
             )
             return None
         items: list[Text] = []
+        counts: list[int] = []
         for ln in body:
             m = _BULLET.match(ln.raw)
             assert m is not None
             if not m.group(1).strip():
                 self.add(ln.no, "箇条書きの項目が空です")
             items.append(_runs(m.group(1).strip()))
-            self.fit(ln.no, items[-1], "箇条書きの項目", PT_BULLET, BODY_WIDTH - INDENT, 2)
+            counts.append(
+                self.fit(ln.no, items[-1], "箇条書きの項目", PT_BULLET, BODY_WIDTH - INDENT, 2)
+            )
+        # 項目の高さの合計に、項目の間の余白を足して、枠の高さと比べる。
+        used = 0.0
+        for i, (ln, n) in enumerate(zip(body, counts, strict=True)):
+            used += text_height_in(n, PT_BULLET) + (BULLET_GAP_PT / 72 if i else 0)
+            if used > BODY_BOX_H + _EPS:
+                self.add(
+                    ln.no,
+                    f"箇条書きが枠の高さに収まりません（この項目の下端が {used:.2f}in、"
+                    f"枠は {BODY_BOX_H}in）。項目を短くするか、減らしてください",
+                )
+                break
         return Bullets(heading, items)
 
     # --- 図 ---
@@ -481,8 +505,17 @@ class _Parser:
         header = self._cells(head.s)
         n = len(header)
         cell_width = BODY_WIDTH / n - 0.2
-        for c in header:
-            self.fit(head.no, c, "表のセル", PT_CELL, cell_width, 2)
+        # 行ごとの高さ（行の中で一番行数の多いセルで決まる）。(原稿の行, 高さ) の並び。
+        heights: list[tuple[int, float]] = []
+        heights.append(
+            (
+                head.no,
+                table_row_height_in(
+                    max(self.fit(head.no, c, "表のセル", PT_CELL, cell_width, 2) for c in header),
+                    PT_CELL,
+                ),
+            )
+        )
         ok = True
         if not MIN_COLUMNS <= n <= MAX_COLUMNS:
             self.add(head.no, f"表の列は {MIN_COLUMNS}〜{MAX_COLUMNS} 列です（{n} 列あります）")
@@ -515,8 +548,21 @@ class _Parser:
                 self.add(ln.no, f"行の列数 {len(cells)} が見出し行の {n} と違います")
                 ok = False
             rows.append([_runs(c) for c in cells])
-            for c in cells:
-                self.fit(ln.no, c, "表のセル", PT_CELL, BODY_WIDTH / n - 0.2, 2)
+            row_lines = max(
+                (self.fit(ln.no, c, "表のセル", PT_CELL, BODY_WIDTH / n - 0.2, 2) for c in cells),
+                default=1,
+            )
+            heights.append((ln.no, table_row_height_in(row_lines, PT_CELL)))
+        used = 0.0
+        for no, h in heights:
+            used += h
+            if used > BODY_BOX_H + _EPS:
+                self.add(
+                    no,
+                    f"表が枠の高さに収まりません（この行の下端が {used:.2f}in、"
+                    f"枠は {BODY_BOX_H}in）。セルを短くするか、行を減らしてください",
+                )
+                break
         if not ok:
             return None
         return Table(heading, [_runs(c) for c in header], rows)
