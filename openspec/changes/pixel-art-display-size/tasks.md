@@ -26,11 +26,11 @@ Issue: #6
 
 ## 3. 確認
 
-- [ ] 3.1 2.1 の大きさのテストと 2.2 の説明文の位置のテストを `harness:mutation-check` で確かめる
+- [x] 3.1 2.1 の大きさのテストと 2.2 の説明文の位置のテストを `harness:mutation-check` で確かめる
   - Verify: 1 ドットの上限 0.075 を 0.15 に変えた複製で 8×8・16×16 のテストが赤になり、長辺の上限 4.6 を外した複製で 200×200 のテストが赤になり、説明文の位置をいまの固定位置に戻した複製で 2.2 のテストが赤になる。変えない複製（対照）では緑。結果を ledger に記す
   - Review: batch A / Risk: none
 
-- [ ] 3.2 すべてのコマンドを通し、見本の PPTX を作る
+- [x] 3.2 すべてのコマンドを通し、見本の PPTX を作る
   - Verify: `uv run pytest` がすべて緑、`uv run ruff check . && uv run ruff format --check .` が通る。`uv run plugin/skills/slide/scripts/build.py examples/sample.md <一時フォルダ>/sample.pptx` が終了コード 0 で、ロボットの画像が 0.6 インチ四方、歯車が 1.2 インチ四方である（python-pptx で読んで確かめる）。PR の本文に、PO が受け入れで PowerPoint で開くファイルの作り方を書く
   - Review: batch A / Risk: none
 
