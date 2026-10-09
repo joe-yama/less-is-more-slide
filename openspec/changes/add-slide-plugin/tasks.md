@@ -80,7 +80,7 @@ Issue: #3
   - Test first: `tests/test_render.py` が、6 種すべてを含む原稿の出力を python-pptx と XML で開き、spec の「固定の配色と書体」「装飾を持たない」「普通の PowerPoint 文書としての体裁」「強調」（色で表し太字でない）「表レイアウト」（塗りなし・横線だけ）の各シナリオ、テーマの書体がメイリオであること、画像の代替テキスト、作成日時が生成時刻であることを確かめて赤になる
   - Review: solo / Risk: ui
 
-- [ ] 4.2 生成器の CLI
+- [x] 4.2 生成器の CLI
   - Files: `plugin/skills/slide/scripts/build.py`（PEP 723: python-pptx）、`tests/test_build_cli.py`
   - Interface: `build.main(argv) -> int`
   - Test first: `tests/test_build_cli.py` が、spec の「生成コマンド」の全シナリオ（成功で 0 と PPTX、違反の行ごとの `<パス>:<行>: <理由>`、失敗時に既存の出力が変わらない）を確かめて赤になる
