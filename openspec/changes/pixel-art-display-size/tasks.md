@@ -16,7 +16,7 @@ Issue: #6
 - [x] 2.1 ドット数から画像の大きさを決め、PNG の拡大率の下限を 1 にする
   - Files: `plugin/skills/slide/scripts/slidekit/render.py`、`tests/test_render.py`、`plugin/skills/slide/references/format.md`（図の節に、画像の大きさはドット数で決まり、16×16 は 1.2 インチ、32〜48 ドットで 2.4 インチ、長辺は最大 4.6 インチになることを 1〜2 文で書く）
   - Interface: `render.py` の、長辺のドット数を受け取って画像の長辺（インチ）を返す関数と、目標・1 ドットの上下限・長辺の上限の定数（design.md「定数の置き場所」）
-  - Test first: `tests/test_render.py` が、delta spec「ドット絵の表示の大きさ」の 7 つのシナリオ（8×8 → 0.6、`icon:gear` → 1.2、32×32 と 40×40 → 2.4、64×64 → 3.2、200×200 → 4.6、32×16 → 2.4×1.2、左右 2 列の `icon:box` → 1.2、いずれもインチで差 2 EMU まで）を、できた PPTX の画像の寸法で確かめて赤になる。PNG の画素数は、いまの `test_picture_alt_text_and_size` の式を `min(64, max(1, ceil(1024 / n)))` に直し、200×200 の格子で 1000 ピクセル四方（拡大率 5）になることも確かめる（design.md「PNG の拡大率の下限を 1 にする」）
+  - Test first: `tests/test_render.py` が、delta spec「ドット絵の表示の大きさ」の 7 つのシナリオ（8×8 → 0.6、`icon:gear` → 1.2、32×32 と 40×40 → 2.4、64×64 → 3.2、200×200 → 4.6、32×16 → 2.4×1.2、左右 2 列の `icon:box` → 1.2、いずれもインチで差 2 EMU まで）を、できた PPTX の画像の寸法で確かめて赤になる。PNG の画素数は、いまの `test_picture_alt_text_and_size` の式を `min(64, max(1, ceil(1024 / n)))` に直し、200×200 の格子で 1200 ピクセル四方（拡大率 6）になることも確かめる（design.md「PNG の拡大率の下限を 1 にする」）
   - Review: solo / Risk: ui
 
 - [ ] 2.2 図の説明文を画像の右端に付けて置く
@@ -39,5 +39,12 @@ Issue: #6
 - pixel-art「格子ファイルの書式と大きさ」: 正しい格子・知らない文字・行の長さが揃わない → 既存の `tests/test_grid.py`（1.1 で残す）。大きな格子 → 1.1
 - slide-generation「ドット絵の表示の大きさ」: 7 つのシナリオすべて → 2.1（3.1 で mutation check）
 - slide-generation「図の説明文の位置」: 小さな画像の説明文 → 2.2（3.1 で mutation check）
+
+## 実装中の判断
+
+### 2026-10-09 200×200 の PNG は 1200 ピクセル四方
+- Ruling: 2.1 の Test first の「1000 ピクセル四方（拡大率 5）」を「1200 ピクセル四方（拡大率 6）」に直す。design.md の式 `min(64, max(1, ceil(1024 / n)))` を正とする。
+- Reason: `ceil(1024 / 200)` は 6 で、5 はタスク文の計算の誤り。式は design.md のルーリングで決めたもので、拡大率 5 では長辺が 1000 ピクセルとなり 1024 ピクセルに届かない。
+- Cost if wrong: 200 ドットの格子の PNG が 1 辺 200 ピクセル大きくなるだけで、見た目は変わらない。
 
 ## Proposals
