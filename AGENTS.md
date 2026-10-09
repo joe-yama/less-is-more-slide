@@ -1,0 +1,59 @@
+# less-is-more-slide
+
+Claude Code と GitHub Copilot でスライドを作成するための Skill と Agent を、プラグインとして公開する。
+
+This repository is built with a harness in which a human **PO** steers and a coding agent executes. The rules below are tool-neutral; Claude Code specifics are in `CLAUDE.md`; Copilot CLI specifics are in `.github/copilot-instructions.md`.
+
+## Roles
+
+| Role | Who | Does | Does not |
+|---|---|---|---|
+| PO | human | decides what to build, priorities, acceptance; answers design questions | write code, dictate implementation details |
+| Agent | coding agent | proposes designs, implements, tests, reviews, writes docs | implement before design approval, add features outside the spec |
+
+## How work flows
+
+Every change goes: idea (1-4 sentences from the PO) → design (`harness:design`) approved by the PO → OpenSpec proposal (`openspec/changes/<name>/`) plus one GitHub Issue → implementation of `tasks.md`, which is the plan (`harness:execute`: test-first implementation by a subagent, adversarial review by a separate subagent) → PR → PO acceptance → archive → `docs/status.md` updated. Small changes (docs, config or styles only, or at most 5 files without a new spec requirement) skip the design step but still get an Issue.
+
+## Stop and ask only for
+
+1. destructive or irreversible operations;
+2. security (secrets, credentials, permissions);
+3. side effects outside the working copy: pushing to `main`, publishing, releases, merging;
+4. a plan defect where every way forward is a guess.
+
+For anything else during implementation, decide by the spec, record `Ruling / Reason / Cost if wrong` in the ledger and the Issue, and continue. The PO can overturn it.
+
+## Definition of done
+
+Tests green (show the command and output), lint passes, `tasks.md` updated, everything committed — and the **CI result** is the final evidence, not local green.
+
+## Commands
+
+| Purpose | Command |
+|---|---|
+| Lint one file (hook) | set by the first change |
+| Test | set by the first change |
+| Changes and specs | `openspec list`, `openspec list --specs` |
+
+The first change that introduces the stack adds its lint, typecheck, test and build commands here, to `.claude/settings.json` (`HARNESS_LINT_CMD`, `HARNESS_TEST_CMD`) and to the CI job `check`. Copilot CLI hooks read `HARNESS_LINT_CMD` and `HARNESS_TEST_CMD` from `.harness/env.json`, which the guard keeps agents out of: ask the PO to add them to `.harness/env.json`. No dependencies or scaffolding before the design is approved.
+
+## Language
+
+Write commits, Issues, PRs, OpenSpec artifacts and status docs in Japanese. Commit messages start with a type prefix: `feat:` `fix:` `test:` `docs:` `chore:` `refactor:` `ci:`.
+
+## Pitfalls
+
+- `main` is PR-only with the required status check `check` (the CI job name). Renaming that job blocks every merge until the ruleset is updated.
+- Before any `gh` write (issue, PR, release), confirm `gh api user --jq .login` prints `joe-yama`. If not, stop and ask the PO to switch accounts.
+- Local green is not done: defects that only CI, real data or real processes show are common. Record them in `docs/harness/lessons.md`.
+- A test written to guard a behavior must be shown to fail when that behavior is broken (mutation check) before it counts.
+
+## Index
+
+| When | Read |
+|---|---|
+| Where things stand, what is next, PO to-dos | `docs/status.md` |
+| Past changes and rulings | `docs/changes.md` |
+| Current specs / changes in progress | `openspec/specs/`, `openspec/changes/` |
+| Tests or CI failed in an unexpected way | `docs/harness/lessons.md` |
