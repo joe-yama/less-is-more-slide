@@ -1,0 +1,22 @@
+[project]
+name = "less-is-more-slide"
+version = "0.1.0"
+description = "Claude Code と GitHub Copilot でスライドを作成する Skill と Agent のプラグイン"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+
+[dependency-groups]
+dev = [
+    "python-pptx",
+    "pytest",
+    "ruff",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["plugin/skills/slide/scripts"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+src = ["plugin/skills/slide/scripts", "tests"]
+include = ["plugin/**/*.py", "tests/**/*.py"]

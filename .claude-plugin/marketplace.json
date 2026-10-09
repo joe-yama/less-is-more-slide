@@ -1,0 +1,15 @@
+{
+  "name": "less-is-more-slide",
+  "owner": { "name": "joe-yama" },
+  "metadata": {
+    "description": "装飾のないスライドを作るプラグインのマーケットプレイス"
+  },
+  "plugins": [
+    {
+      "name": "less-is-more-slide",
+      "source": "./plugin",
+      "description": "人が作ったように見える装飾のないスライド（PPTX）を、原稿から作る Skill と、作成役・点検役の Agent",
+      "version": "0.1.0"
+    }
+  ]
+}
