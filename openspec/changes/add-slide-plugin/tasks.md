@@ -152,3 +152,5 @@ Issue: #3
 
 - （batch A レビュー Minor）`tests/test_palette.py` で、4 色の値と `GRID_COLORS` の対応が同じ値を二重に書いている。どちらか一方の書き方に寄せられる。
 - （batch A レビュー Minor）CI の `astral-sh/setup-uv` に `enable-cache` を付けると、依存の取得が速くなる。
+- （1.3 レビュー Minor）`AGENTS.md` の「The first change that introduces the stack adds ...」の文は、スタックが入った今は古い。現在の手順を書く文に改められる。
+- （1.3 レビュー Minor）編集ごとの lint フックは `ruff check` だけで、整形の違反は CI の `ruff format --check` で初めて分かる。フックで整形も確かめる案がある。
