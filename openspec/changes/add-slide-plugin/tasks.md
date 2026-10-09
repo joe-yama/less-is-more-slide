@@ -149,3 +149,6 @@ Issue: #3
 - マージ後に `/opsx:archive`、`docs/changes.md` に rulings を写し、`docs/status.md` を更新する。
 
 ## Proposals
+
+- （batch A レビュー Minor）`tests/test_palette.py` で、4 色の値と `GRID_COLORS` の対応が同じ値を二重に書いている。どちらか一方の書き方に寄せられる。
+- （batch A レビュー Minor）CI の `astral-sh/setup-uv` に `enable-cache` を付けると、依存の取得が速くなる。
