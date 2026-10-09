@@ -98,7 +98,7 @@ Issue: #3
   - Test first: `tests/test_examples.py` が、見本が 6 種のレイアウトをすべて含み、格子ファイルを参照し、生成に成功することを確かめて赤になる。CI の新しい手順は push 後の job `check` で緑になることを確かめる
   - Review: batch E / Risk: none
 
-- [ ] 5.2 Skill の本文と参照文書
+- [x] 5.2 Skill の本文と参照文書
   - Files: `plugin/skills/slide/SKILL.md`、`plugin/skills/slide/references/format.md`、`plugin/skills/slide/references/writing.md`、`tests/test_skill_docs.py`
   - Test first: `tests/test_skill_docs.py` が、SKILL.md と format.md の原稿の例（コードブロック）をすべて生成器に通して成功すること、6 種のレイアウトの書き方がそれぞれ載っていること、SKILL.md のコマンドが design.md の形（`uv run <Skill のフォルダ>/scripts/...`）であること、writing.md に AI っぽさの一覧の 12 項目があることを確かめて赤になる
   - Review: batch E / Risk: none
