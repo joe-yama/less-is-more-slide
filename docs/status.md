@@ -1,10 +1,10 @@
 # Current status
 
-Last updated: 2026-10-09 (add-slide-plugin をアーカイブした). Update this file after every archive.
+Last updated: 2026-10-09 (pixel-art-display-size をアーカイブした). Update this file after every archive.
 
 ## Phase
 
-最初の版を公開した。プラグイン `less-is-more-slide`（Skill `slide`、Agent `writer`・`critic`）が `main` にある（PR #4）。
+最初の版を公開した。プラグイン `less-is-more-slide`（Skill `slide`、Agent `writer`・`critic`）が `main` にある（PR #4）。ドット絵の表示の大きさをドット数から決める変更（目標 2.4 インチ、1 ドット 0.05〜0.075 インチ、長辺は最大 4.6 インチ、格子の上限 64 の撤廃）も入った（PR #7）。
 
 - 開発のコマンドは `AGENTS.md` のコマンド表にある。
   - テスト: `uv run pytest`
@@ -22,8 +22,9 @@ Last updated: 2026-10-09 (add-slide-plugin をアーカイブした). Update thi
 ## Next candidates
 
 1. 受け入れで見つかった問題の修正。
-2. add-slide-plugin の Proposals（`docs/changes.md` の Handed on）からの改善。python-pptx の版の固定、出力のファイルの権限、レイアウトの 16:9 化など。
-3. ハーネスの `ask-gate.sh` に `uv lock` の規則を足す提案（`docs/harness/lessons.md`）。
+2. 同梱アイコン 14 個の描き直し。いまは 16×16 で 1.2 インチに表示される。32×32 以上で描けば 2.4 インチになる（pixel-art-display-size の design.md 合意事項）。
+3. add-slide-plugin と pixel-art-display-size の Proposals（`docs/changes.md` の Handed on）からの改善。python-pptx の版の固定、出力のファイルの権限、レイアウトの 16:9 化、テストのコメントの直しなど。
+4. ハーネスの `ask-gate.sh` に `uv lock` の規則を足す提案（`docs/harness/lessons.md`）。
 
 ## Harness versions
 
