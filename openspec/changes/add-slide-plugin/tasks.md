@@ -171,3 +171,6 @@ Issue: #3
 - （batch D レビュー Minor）`build.py` の出力先のフォルダがないと、`mkstemp` の `FileNotFoundError` がトレースバックのまま出る。日本語の理由を 1 行出す案がある。
 - （batch D レビュー Minor）原稿を読めないときの理由が `<パス>: 原稿を読めません` で、行番号を持たない。spec の書式の外だが妥当。
 - （batch D レビュー Minor）`tests/test_build_cli.py` の違反の行数の確認が `>= 2` で弱い。ちょうどの件数で確かめられる。
+- （batch E レビュー Minor）`tests/test_readme.py` の uv が必要なことの確認（`uv.*(必要|入れ)`）は、uv の自動導入の文などでも通り、弱い。
+- （batch E レビュー Minor）`tests/fixtures/ai_tells.md` には、仕込んだ 5 種のほかに 6 番（具体のなさ）と 5 番（揃いすぎ）の一部も含まれる。6.2 の数え方は tasks.md の補足で 5 種に限った。
+- （batch E レビュー Minor）`tests/test_skill_docs.py` と `tests/test_examples.py` は生成器を `sys.executable` で呼ぶため、PEP 723 の見出しを確かめない。CI の `uv run --no-project` の手順が補う。
