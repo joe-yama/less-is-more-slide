@@ -108,7 +108,7 @@ Issue: #3
   - Test first: `tests/test_plugin.py` が、2 つのマニフェストが JSON として正しく spec の項目を持つこと、マーケットプレイスがプラグインを 1 つだけ載せ source が `./plugin` であること、critic の `tools` が Read・Glob・Grep だけであること、writer と critic が Skill `slide` を参照することを確かめて赤になる
   - Review: batch E / Risk: none
 
-- [ ] 5.4 README
+- [x] 5.4 README
   - Files: `README.md`、`tests/test_readme.py`
   - Test first: `tests/test_readme.py` が、Claude Code と Copilot CLI それぞれの導入コマンド、uv が必要なこと、見本原稿の場所が書いてあることを確かめて赤になる
   - Review: batch E / Risk: none
