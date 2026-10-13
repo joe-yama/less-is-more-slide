@@ -63,7 +63,7 @@ Issue: #9
 
 ## 5. 文書と版
 
-- [ ] 5.1 Skill の文書に添え訳を書く
+- [x] 5.1 Skill の文書に添え訳を書く
   - Files: `plugin/skills/slide/references/format.md`（「添え訳」の節: 書き方、対象、表の書き方、大きさ、上限、拒否されるもの）、`plugin/skills/slide/SKILL.md`（「原稿の書式（最短）」の原稿の例に添え訳の行を 1 つ足すか、別の短い例を 1 つ足す）、`plugin/skills/slide/references/writing.md`（「添え訳は本文と同じ意味にし、情報を足したり削ったりしない」）、`tests/test_skill_docs.py`
   - Test first: `tests/test_skill_docs.py` で、`SKILL.md` の例に `^ ` の行があること、`format.md` に `^ ` と大きさ・上限・拒否の記述があること、`writing.md` に添え訳の規則があることを確かめて赤になる。`SKILL.md` と `format.md` の例がそのまま生成できることは既存のテストで確かめる
   - Review: batch C / Risk: none
