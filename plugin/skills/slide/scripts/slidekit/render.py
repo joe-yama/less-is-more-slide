@@ -129,11 +129,17 @@ def _textbox(slide, name, x, y, w, h, anchor=MSO_ANCHOR.TOP):
     return box.text_frame
 
 
-def _gloss_paragraph(tf, text: str, pt: float, first: bool = False) -> None:
-    """添え訳の段落。対象の段落のすぐ次に置き、前の間隔は 0。"""
+def _gloss_paragraph(tf, text: str, pt: float, first: bool = False, item: bool = False) -> None:
+    """添え訳の段落。対象の段落のすぐ次に置き、前の間隔は 0。
+    item なら箇条書きの項目の添え訳で、記号なしで項目の本文の左端に揃える。"""
     p = tf.paragraphs[0] if first else tf.add_paragraph()
     _fill_paragraph(p, (Run(text),), gloss_pt(pt), GLOSS)
     p.space_before = Pt(0)
+    if item:
+        ppr = p._p.get_or_add_pPr()
+        ppr.set("marL", str(int(Inches(INDENT))))
+        ppr.set("indent", "0")
+        ppr.append(parse_xml(f'<a:buNone xmlns:a="{_NS_A}"/>'))
 
 
 def _paragraphs(
@@ -153,7 +159,7 @@ def _paragraphs(
         if bullets:
             _bulletize(p)
         if glosses is not None and glosses[i] is not None:
-            _gloss_paragraph(tf, glosses[i], pt)
+            _gloss_paragraph(tf, glosses[i], pt, item=bullets)
 
 
 def _title(slide, text: str, x, y, w, h, pt: float, anchor=MSO_ANCHOR.TOP) -> None:
@@ -239,7 +245,7 @@ def _statement(slide, s: Statement) -> None:
 
 def _bullets(slide, s: Bullets) -> None:
     tf = _textbox(slide, "箇条書き", MARGIN_X, BODY_TOP, BODY_W, BODY_BOX_H)
-    _paragraphs(tf, s.items, PT_BULLET, INK, True, gap=BULLET_GAP_PT)
+    _paragraphs(tf, s.items, PT_BULLET, INK, True, gap=BULLET_GAP_PT, glosses=s.item_glosses)
 
 
 def _figure(slide, s: Figure) -> None:
@@ -247,7 +253,7 @@ def _figure(slide, s: Figure) -> None:
     if s.caption is not None:
         x = Emu(pic.left + pic.width).inches + CAPTION_GAP
         tf = _textbox(slide, "図の説明", x, BODY_TOP, CAPTION_W, 2.4)
-        _paragraphs(tf, [s.caption], PT_CAPTION, INK, False)
+        _paragraphs(tf, [s.caption], PT_CAPTION, INK, False, glosses=[s.caption_gloss])
 
 
 def _line_xml(side: str, visible: bool) -> str:
@@ -281,6 +287,7 @@ def _table(slide, s: Table) -> None:
     for r in table.rows:
         r.height = Inches(TABLE_ROW_H)
     grid = [s.header, *s.rows]
+    glosses = [s.header_glosses, *s.row_glosses]
     for ri, row in enumerate(grid):
         for ci, text in enumerate(row):
             cell = table.cell(ri, ci)
@@ -289,6 +296,9 @@ def _table(slide, s: Table) -> None:
             cell.vertical_anchor = MSO_ANCHOR.MIDDLE
             cell.fill.background()
             _fill_paragraph(cell.text_frame.paragraphs[0], text, PT_CELL, GRAY if ri == 0 else INK)
+            gloss = glosses[ri][ci] if glosses else None
+            if gloss is not None:
+                _gloss_paragraph(cell.text_frame, gloss, PT_CELL)
             tc_pr = cell._tc.get_or_add_tcPr()
             underline = ri in (0, n_rows - 1)
             sides = [("lnL", False), ("lnR", False), ("lnT", False), ("lnB", underline)]
@@ -299,12 +309,20 @@ def _table(slide, s: Table) -> None:
 def _block(slide, b: Block, x: float) -> None:
     if isinstance(b, BulletsBlock):
         tf = _textbox(slide, "箇条書き", x, BODY_TOP, COLUMN_W, BODY_BOX_H)
-        _paragraphs(tf, b.items, PT_COLUMN_BULLET, INK, True, gap=COLUMN_BULLET_GAP_PT)
+        _paragraphs(
+            tf,
+            b.items,
+            PT_COLUMN_BULLET,
+            INK,
+            True,
+            gap=COLUMN_BULLET_GAP_PT,
+            glosses=b.item_glosses,
+        )
     elif isinstance(b, ImageBlock):
         _picture(slide, b.grid, b.alt, x, BODY_TOP)
     elif isinstance(b, TextBlock):
         tf = _textbox(slide, "文", x, BODY_TOP, COLUMN_W, BODY_BOX_H)
-        _paragraphs(tf, [b.text], PT_COLUMN_TEXT, INK, False)
+        _paragraphs(tf, [b.text], PT_COLUMN_TEXT, INK, False, glosses=[b.gloss])
 
 
 def _two_columns(slide, s: TwoColumn) -> None:

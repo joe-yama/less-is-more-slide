@@ -111,3 +111,84 @@ def test_statement_gloss(tmp_path):
 def test_statement_without_gloss_has_one_paragraph(tmp_path):
     s = slides_of(tmp_path, "# T\n---\nHello\n")[1]
     assert len(box(s, "一言").text_frame.paragraphs) == 1
+
+
+# --- 4.2 箇条書き・2 列・図の説明文・表のセル ---
+
+
+def check_item_gloss(p, text: str, pt: int) -> None:
+    check_gloss_paragraph(p, text, pt)
+    ppr = p._p.pPr
+    assert ppr is not None
+    assert ppr.find(f"{{{NS_A}}}buNone") is not None
+    assert ppr.find(f"{{{NS_A}}}buChar") is None
+    assert int(ppr.get("marL")) == int(Inches(0.4))
+    assert int(ppr.get("indent")) == 0
+
+
+def text_left(p) -> int:
+    """段落の本文（2 行目以降ではなく、1 行目の文字）の左端。行頭の記号があれば、記号の右。"""
+    ppr = p._p.pPr
+    marl = int(ppr.get("marL", 0))
+    has_bullet = ppr.find(f"{{{NS_A}}}buChar") is not None
+    return marl if has_bullet else marl + int(ppr.get("indent", 0))
+
+
+def test_bullet_item_gloss(tmp_path):
+    s = slides_of(tmp_path, "# T\n---\n## H\n- a\n^ あ\n- b\n- c\n^ し\n")[1]
+    ps = box(s, "箇条書き").text_frame.paragraphs
+    assert [p.text for p in ps] == ["a", "あ", "b", "c", "し"]
+    check_item_gloss(ps[1], "あ", 14)
+    check_item_gloss(ps[4], "し", 14)
+    assert text_left(ps[1]) == text_left(ps[0]) == int(Inches(0.4))
+    assert ps[0]._p.pPr.find(f"{{{NS_A}}}buChar") is not None
+    assert ps[2].space_before.pt == 12  # 次の項目の前の間隔は変わらない
+    assert ps[3].space_before.pt == 12
+
+
+def test_bullets_without_gloss_have_one_paragraph_per_item(tmp_path):
+    s = slides_of(tmp_path, "# T\n---\n## H\n- a\n- b\n")[1]
+    assert len(box(s, "箇条書き").text_frame.paragraphs) == 2
+
+
+def test_two_column_gloss(tmp_path):
+    text = "# T\n---\n## H\n- a\n^ あ\n- b\n|||\nText\n^ 文\n"
+    s = slides_of(tmp_path, text)[1]
+    bullets = box(s, "箇条書き").text_frame.paragraphs
+    assert [p.text for p in bullets] == ["a", "あ", "b"]
+    check_item_gloss(bullets[1], "あ", 13)
+    assert bullets[2].space_before.pt == 10
+    para = box(s, "文").text_frame.paragraphs
+    assert [p.text for p in para] == ["Text", "文"]
+    check_gloss_paragraph(para[1], "文", 13)
+
+
+def test_two_column_right_bullets_gloss(tmp_path):
+    s = slides_of(tmp_path, "# T\n---\n## H\nText\n|||\n- a\n^ あ\n")[1]
+    ps = box(s, "箇条書き").text_frame.paragraphs
+    check_item_gloss(ps[1], "あ", 13)
+
+
+def test_figure_caption_gloss(tmp_path):
+    s = slides_of(tmp_path, "# T\n---\n## H\n![x](icon:gear)\nCaption\n^ 説明\n")[1]
+    ps = box(s, "図の説明").text_frame.paragraphs
+    assert [p.text for p in ps] == ["Caption", "説明"]
+    check_gloss_paragraph(ps[1], "説明", 12)
+
+
+def test_table_cell_gloss(tmp_path):
+    text = (
+        "# T\n---\n## H\n| a | b | c |\n^ | あ | | し |\n|---|---|---|\n"
+        "| 1 | 2 | 3 |\n^ | | に | |\n| 4 | 5 | 6 |\n"
+    )
+    s = slides_of(tmp_path, text)[1]
+    table = box(s, "表").table
+    head = [table.cell(0, c).text_frame.paragraphs for c in range(3)]
+    assert [len(p) for p in head] == [2, 1, 2]
+    check_gloss_paragraph(head[0][1], "あ", 11)
+    check_gloss_paragraph(head[2][1], "し", 11)
+    row1 = [table.cell(1, c).text_frame.paragraphs for c in range(3)]
+    assert [len(p) for p in row1] == [1, 2, 1]
+    check_gloss_paragraph(row1[1][1], "に", 11)
+    row2 = [table.cell(2, c).text_frame.paragraphs for c in range(3)]
+    assert [len(p) for p in row2] == [1, 1, 1]
