@@ -1,5 +1,6 @@
 import subprocess
 import sys
+import zipfile
 from pathlib import Path
 
 from slidekit.manuscript import (
@@ -11,6 +12,7 @@ from slidekit.manuscript import (
     TwoColumn,
     parse,
 )
+from slidekit.render import render
 
 ROOT = Path(__file__).resolve().parent.parent
 EXAMPLES = ROOT / "examples"
@@ -41,3 +43,31 @@ def test_sample_builds(tmp_path):
     )
     assert r.returncode == 0, r.stderr
     assert out.stat().st_size > 0
+
+
+def test_sample_has_no_gloss_color(tmp_path):
+    out = tmp_path / "sample.pptx"
+    render(parse(SAMPLE.read_text(encoding="utf-8"), EXAMPLES), out)
+    with zipfile.ZipFile(out) as z:
+        for n in z.namelist():
+            if n.endswith(".xml"):
+                assert "767676" not in z.read(n).decode("utf-8").upper(), n
+
+
+def test_bilingual_builds(tmp_path):
+    out = tmp_path / "bilingual.pptx"
+    r = subprocess.run(
+        [sys.executable, str(BUILD), str(EXAMPLES / "bilingual.md"), "-o", str(out)],
+        capture_output=True,
+        text=True,
+        timeout=120,
+        check=False,
+    )
+    assert r.returncode == 0, r.stderr
+    assert out.stat().st_size > 0
+
+
+def test_bilingual_uses_all_six_layouts():
+    deck = parse((EXAMPLES / "bilingual.md").read_text(encoding="utf-8"), EXAMPLES)
+    assert {type(s) for s in deck.slides} == {Cover, Statement, Bullets, Figure, Table, TwoColumn}
+    assert 5 <= len(deck.slides) <= 7

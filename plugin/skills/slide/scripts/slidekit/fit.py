@@ -19,11 +19,22 @@ PT_COLUMN_BULLET = 22
 PT_COLUMN_TEXT = 22
 PT_PAGE_NUMBER = 12
 
+# 添え訳（design.md「合意事項」）。大きさは本文の 60% を整数の pt に丸める。
+GLOSS_RATIO = 0.6
+MAX_GLOSS_LINES = 2  # 添え訳の行数の上限
+
+
+def gloss_pt(pt: float) -> int:
+    """本文の大きさ（pt）から添え訳の大きさ（pt）。四捨五入した整数。"""
+    return math.floor(pt * GLOSS_RATIO + 0.5)
+
+
 # 枠の高さ（インチ）と行の高さ。メイリオの行の高さは 1.5em（design.md「2026-10-09 枠の高さも判定する」）。
 # render が枠を描くのにも、manuscript が収まるかの判定にも、ここを使う。
 LINE_HEIGHT_FACTOR = 1.5
 BODY_BOX_H = 4.9  # 箇条書き・2 列の本文・表の下端までの高さ（見出しの下 1.8in から）
 BULLET_GAP_PT = 12  # 箇条書きの項目の間
+COLUMN_BULLET_GAP_PT = 10  # 2 列の箇条書きの項目の間
 TABLE_ROW_H = 0.6  # 表の行の最低の高さ
 CELL_MARGIN_V = 0.05  # 表のセルの上下の余白（それぞれ）
 
@@ -44,6 +55,13 @@ def text_height_in(lines: int, font_pt: float) -> float:
     return lines * font_pt * LINE_HEIGHT_FACTOR / 72
 
 
-def table_row_height_in(lines: int, font_pt: float) -> float:
-    """表の行の高さ。最低の高さより内容が高ければ、行が伸びる。"""
-    return max(TABLE_ROW_H, text_height_in(lines, font_pt) + 2 * CELL_MARGIN_V)
+def table_row_height_in(
+    lines: int, font_pt: float, gloss_lines: int = 0, gloss_font_pt: float = 0
+) -> float:
+    """表のセル 1 つが決める行の高さ。最低の高さより内容が高ければ、行が伸びる。
+
+    gloss_lines が 0 でなければ、本文の段落の下に添え訳の段落が積まれる。"""
+    content = text_height_in(lines, font_pt)
+    if gloss_lines:
+        content += text_height_in(gloss_lines, gloss_font_pt)
+    return max(TABLE_ROW_H, content + 2 * CELL_MARGIN_V)

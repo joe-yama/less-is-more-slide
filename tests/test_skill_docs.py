@@ -125,3 +125,22 @@ def test_skill_tells_the_caller_to_pass_the_skill_folder_path():
     for agent in ("writer", "critic"):
         line = next(ln for ln in text.splitlines() if f"Agent `{agent}`" in ln)
         assert "Skill のフォルダの絶対パス" in line, agent
+
+
+def test_skill_example_has_a_gloss_line():
+    assert any(ln.startswith("^ ") for b in blocks(SKILL, "markdown") for ln in b.splitlines())
+
+
+def test_format_documents_the_gloss():
+    text = FORMAT.read_text(encoding="utf-8")
+    assert "## 添え訳" in text
+    section = text.split("## 添え訳", 1)[1].split("\n## 強調", 1)[0]
+    assert any(ln.startswith("^ ") for b in blocks(FORMAT, "markdown") for ln in b.splitlines())
+    assert "^ | " in section  # 表の書き方
+    for key in ("767676", "14pt", "11pt", "2 行", "1 行", "拒否", "**", "すぐ次の行"):
+        assert key in section, key
+
+
+def test_writing_requires_the_gloss_to_match_the_body():
+    text = WRITING.read_text(encoding="utf-8")
+    assert "添え訳は本文と同じ意味にし、情報を足したり削ったりしない" in text

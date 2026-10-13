@@ -27,7 +27,7 @@ uv run <Skill のフォルダ>/scripts/build.py 原稿.md -o 出力.pptx
 
 ## 原稿の書式（最短）
 
-`---` だけの行でスライドを区切る。最初のスライドは表紙。6 種のレイアウトを次の 1 つの原稿で示す。詳しい書式と制限値は `references/format.md`。
+`---` だけの行でスライドを区切る。最初のスライドは表紙。6 種のレイアウトを次の 1 つの原稿で示す。詳しい書式と制限値は `references/format.md`。対象の行のすぐ次に `^ ` で始まる行を書くと、小さな灰色の添え訳（例では英訳）が付く。
 
 ```markdown
 # 夜間バッチの移行報告
@@ -43,6 +43,7 @@ uv run <Skill のフォルダ>/scripts/build.py 原稿.md -o 出力.pptx
 ## 移行でやったこと
 
 - 旧サーバー 3 台を新しい 1 台に集約した
+^ Moved three old servers onto one new server
 - 失敗時の再実行を **自動** にした
 
 ---

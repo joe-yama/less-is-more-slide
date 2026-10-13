@@ -105,3 +105,19 @@ def test_agents_use_the_skill_folder_path_given_in_the_message_first():
     assert "<渡されたフォルダ>/scripts/build.py" in writer
     _, critic = frontmatter(CRITIC)
     assert "<渡されたフォルダ>/references/writing.md" in critic
+
+
+def test_writer_keeps_the_gloss_in_step_with_the_body():
+    _, body = frontmatter(WRITER)
+    assert "添え訳を本文と同じ意味にし、片方にしかない情報を作らない" in body
+
+
+def test_critic_checks_the_gloss_against_the_body():
+    fields, body = frontmatter(CRITIC)
+    assert "添え訳と本文の意味が合っているか、片方にしかない情報がないか" in body
+    assert tool_list(fields) == ["Read", "Glob", "Grep"]
+
+
+def test_plugin_version_is_0_2_0_in_both_manifests():
+    assert load(MANIFEST)["version"] == "0.2.0"
+    assert load(MARKETPLACE)["plugins"][0]["version"] == "0.2.0"

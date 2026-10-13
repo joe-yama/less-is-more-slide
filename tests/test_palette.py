@@ -18,3 +18,8 @@ def test_grid_colors_map_four_characters():
     assert palette.GRID_COLORS["#"] == palette.INK
     assert palette.GRID_COLORS["+"] == palette.GRAY
     assert palette.GRID_COLORS["*"] == palette.ACCENT
+
+
+def test_gloss_color_is_not_a_grid_color():
+    assert palette.GLOSS == "767676"
+    assert palette.GLOSS not in palette.GRID_COLORS.values()
