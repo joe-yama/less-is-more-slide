@@ -81,3 +81,8 @@ delta spec「添え訳の行数と枠の高さ」のとおり。箇条書きは�
 
 ### 版
 プラグインの版を 0.1.0 から 0.2.0 に上げる（原稿の書式が増える機能の追加）。`plugin/.claude-plugin/plugin.json` と `.claude-plugin/marketplace.json` の両方を変える。
+
+### 2026-10-13 実装中の判断（タスク 3.1・3.3）
+- Ruling: `fit.table_row_height_in` に添え訳の行数と大きさの引数（既定値つき、既定値ではいまと同じ結果）を足し、表の行の高さを `manuscript.py` と `render.py` で同じ関数から求める。`Table.heading_gloss` は、見出しを扱う共通の処理と一緒に 3.1 で入れる。
+- Reason: 「Context」のとおり、判定と描画は同じ寸法の定義を使う。`heading_gloss` は「データの持ち方」で `Table` にもあると決めてあり、見出しの処理はレイアウトによらず共通である。
+- Cost if wrong: 3.3 の Files に `fit.py` がなかったことだけで、振る舞いは spec のとおり。既定値でいまと同じ結果になることは 1.1 のテストが守る。
