@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from slidekit.fit import line_count
 from slidekit.manuscript import (
     Bullets,
     BulletsBlock,
@@ -217,3 +218,155 @@ def test_table_gloss_bold_in_cell():
     got = problems(table_text((6, "^ | **a** | b | c |")))
     assert [line for line, _ in got] == [7]
     assert "添え訳の中に強調は書けません" in got[0][1]
+
+
+# --- 行数の上限と高さの判定 ---
+
+BODY = 11.53
+INDENT = 0.4
+COLUMN = 5.5
+CAPTION = 5.2
+
+
+def zen(pt: float, width: float, lines: int) -> str:
+    """全角文字だけで、ちょうど lines 行になる文字列（fit.line_count で数える）。"""
+    n = 1 if lines == 1 else int(width * 72 / pt * (lines - 1)) + 1
+    text = "あ" * n
+    assert line_count(text, pt, width) == lines
+    return text
+
+
+def test_bullet_gloss_over_two_lines():
+    gloss = zen(14, BODY - INDENT, 3)
+    got = problems(PREFIX + f"## H\n- a\n^ {gloss}\n")
+    assert [line for line, _ in got] == [5]
+    assert "上限は 2 行" in got[0][1]
+
+
+def test_bullet_gloss_two_lines_ok():
+    deck(PREFIX + f"## H\n- a\n^ {zen(14, BODY - INDENT, 2)}\n")
+
+
+def test_heading_gloss_limit_is_one_line():
+    assert bad_lines(PREFIX + f"## H\n^ {zen(18, BODY, 2)}\n- a\n") == [4]
+    deck(PREFIX + f"## H\n^ {zen(18, BODY, 1)}\n- a\n")
+
+
+def test_cover_line_gloss_limit_is_one_line():
+    assert bad_lines(f"# T\nSub\n^ {zen(12, BODY, 2)}\n") == [3]
+    deck(f"# T\nSub\n^ {zen(12, BODY, 1)}\n")
+
+
+def test_other_gloss_limits_are_two_lines():
+    over = {
+        "cover title": (f"# T\n^ {zen(24, BODY, 3)}\n", 2),
+        "statement": (PREFIX + f"S\n^ {zen(24, BODY, 3)}\n", 4),
+        "caption": (PREFIX + f"## H\n![x](icon:gear)\nC\n^ {zen(12, CAPTION, 3)}\n", 6),
+        "column text": (PREFIX + f"## H\nA\n|||\nB\n^ {zen(13, COLUMN, 3)}\n", 7),
+        "column bullet": (PREFIX + f"## H\n- a\n^ {zen(13, COLUMN - INDENT, 3)}\n|||\nB\n", 5),
+        "table cell": (
+            PREFIX
+            + f"## H\n| a | b |\n|---|---|\n| 1 | 2 |\n^ | {zen(11, BODY / 2 - 0.2, 3)} | |\n",
+            7,
+        ),
+    }
+    for name, (text, line) in over.items():
+        assert bad_lines(text) == [line], name
+
+
+def test_bullets_total_height_includes_gloss():
+    item = zen(24, BODY - INDENT, 2)
+    gloss = zen(14, BODY - INDENT, 2)
+    plain = PREFIX + "## H\n" + "".join(f"- {item}\n" for _ in range(3))
+    deck(plain)  # 添え訳がなければ通る
+    lines = ["## H"]
+    for _ in range(3):
+        lines += [f"- {item}", f"^ {gloss}"]
+    got = problems(PREFIX + "\n".join(lines) + "\n")
+    # 3 行目から ## H、4・5 が 1 つ目、6・7 が 2 つ目、8・9 が 3 つ目
+    assert [line for line, _ in got] == [9]
+    assert "枠の高さ" in got[0][1]
+
+
+def test_two_column_bullets_height():
+    item = zen(22, COLUMN - INDENT, 2)
+    gloss = zen(13, COLUMN - INDENT, 2)
+    plain = PREFIX + "## H\n" + "".join(f"- {item}\n" for _ in range(4)) + "|||\nB\n"
+    deck(plain)
+    lines = ["## H"]
+    for _ in range(4):
+        lines += [f"- {item}", f"^ {gloss}"]
+    got = problems(PREFIX + "\n".join(lines) + "\n|||\nB\n")
+    # 3 行目から ## H、4・5、6・7、8・9、10・11。4 つ目の項目は 10 行目
+    assert [line for line, _ in got] == [10]
+
+
+def test_two_column_right_bullets_height():
+    item = zen(22, COLUMN - INDENT, 2)
+    gloss = zen(13, COLUMN - INDENT, 2)
+    lines = ["## H", "A", "|||"]
+    for _ in range(4):
+        lines += [f"- {item}", f"^ {gloss}"]
+    # 3 行目から ## H、A、|||、6・7、8・9、10・11、12・13。4 つ目の項目は 12 行目
+    assert bad_lines(PREFIX + "\n".join(lines) + "\n") == [12]
+
+
+def table_with(gloss_rows: set[int]) -> tuple[str, dict[int, int]]:
+    """3 列の表。gloss_rows は添え訳をつける行（0 が見出し行、1〜5 が本文）。
+    戻り値は原稿と、行 → その添え訳の原稿の行番号。"""
+    gloss = "^ | " + " | ".join([zen(11, BODY / 3 - 0.2, 2)] * 3) + " |"
+    lines = ["## H"]  # 3 行目
+    where: dict[int, int] = {}
+    for r in range(6):
+        lines.append("| a | b | c |" if r == 0 else "| 1 | 2 | 3 |")
+        if r in gloss_rows:
+            lines.append(gloss)
+            where[r] = 2 + len(lines)
+        if r == 0:
+            lines.append("|---|---|---|")
+    return PREFIX + "\n".join(lines) + "\n", where
+
+
+def test_table_height_rejects_at_gloss_that_overflows():
+    text, where = table_with({0, 1, 2, 5})
+    assert bad_lines(text) == [where[5]]
+    ok, _ = table_with({0, 1, 2})
+    deck(ok)  # 5 行目の添え訳を除けば通る
+
+
+def test_table_height_rejects_table_row_when_plain_already_overflows():
+    # 2 行のセルの行は 0.85in。見出し + 本文 5 行 = 5.1in で、添え訳がなくても本文 5 行目で超える。
+    cell = zen(18, BODY / 3 - 0.2, 2)
+    head = f"## H\n| {cell} | b | c |\n|---|---|---|\n"
+    rows = [f"| {cell} | b | c |" for _ in range(5)]
+    plain = PREFIX + head + "\n".join(rows) + "\n"
+    # 3 行目から ## H、4 見出し、5 区切り、6〜10 が本文。本文 5 行目は 10 行目
+    assert bad_lines(plain) == [10]
+    # 添え訳をつけても、添え訳を除いた高さで超える行の報告は表の行のまま
+    rows[0] += "\n^ | x | y | z |"
+    assert bad_lines(PREFIX + head + "\n".join(rows) + "\n") == [11]
+
+
+def test_limits_fit_without_height_check():
+    cover = f"# {zen(40, BODY, 2)}\n^ {zen(24, BODY, 2)}\n"
+    for _ in range(3):
+        cover += f"{zen(20, BODY, 1)}\n^ {zen(12, BODY, 1)}\n"
+    deck(cover)
+    deck(PREFIX + f"{zen(40, BODY, 3)}\n^ {zen(24, BODY, 2)}\n")
+    deck(PREFIX + f"## H\n![x](icon:gear)\n{zen(20, CAPTION, 3)}\n^ {zen(12, CAPTION, 2)}\n")
+    deck(PREFIX + f"## H\nA\n|||\n{zen(22, COLUMN, 3)}\n^ {zen(13, COLUMN, 2)}\n")
+
+
+def test_build_cli_reports_path_line_reason(tmp_path, capsys):
+    import build
+
+    src = tmp_path / "gloss.md"
+    src.write_text(PREFIX + f"## H\n- a\n^ {zen(14, BODY - INDENT, 3)}\n", encoding="utf-8")
+    out = tmp_path / "gloss.pptx"
+    assert build.main([str(src), "-o", str(out)]) == 1
+    err = capsys.readouterr().err.splitlines()
+    assert len(err) == 1
+    prefix = f"{src}:5: "
+    assert err[0].startswith(prefix)
+    assert "上限は 2 行" in err[0][len(prefix) :]
+    assert not out.exists()

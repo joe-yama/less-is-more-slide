@@ -7,6 +7,8 @@ from pathlib import Path
 from slidekit.fit import (
     BODY_BOX_H,
     BULLET_GAP_PT,
+    COLUMN_BULLET_GAP_PT,
+    MAX_GLOSS_LINES,
     PT_BULLET,
     PT_CAPTION,
     PT_CELL,
@@ -16,6 +18,7 @@ from slidekit.fit import (
     PT_COVER_TITLE,
     PT_HEADING,
     PT_STATEMENT,
+    gloss_pt,
     line_count,
     table_row_height_in,
     text_height_in,
@@ -216,6 +219,14 @@ def _runs(text: str) -> Text:
     return tuple(runs)
 
 
+@dataclass(frozen=True)
+class _RowHeight:
+    no: int  # 表の行の原稿の行番号
+    gloss_no: int | None  # その行の添え訳の行番号
+    full: float  # 添え訳を含む高さ（インチ）
+    plain: float  # 添え訳を含まない高さ
+
+
 class _Parser:
     def __init__(self, base_dir: Path):
         self.base_dir = base_dir
@@ -387,28 +398,55 @@ class _Parser:
             ok = False
         return ok
 
-    def _gloss(self, target: _Line) -> str | None:
-        """対象の行についた添え訳の文字。なければ None。"""
+    def _gloss(
+        self, target: _Line, pt: float, width: float, max_lines: int = MAX_GLOSS_LINES
+    ) -> tuple[str | None, int]:
+        """対象の行についた添え訳の文字と、その行数。なければ (None, 0)。
+
+        pt は対象の本文の大きさ。添え訳の枠は同じ幅で、大きさは gloss_pt(pt)。"""
         gloss = self._glosses.get(target.no)
         if gloss is None:
-            return None
+            return None, 0
         self._used_glosses.add(target.no)
-        return gloss.s[1:].strip()
+        text = gloss.s[1:].strip()
+        return text, self.fit(gloss.no, text, "添え訳", gloss_pt(pt), width, max_lines)
 
-    def _cell_glosses(self, target: _Line, n: int) -> list[str | None]:
-        """表の行についた添え訳の行を、セルごとの添え訳にする。なければ n 個の None。"""
-        text = self._gloss(target)
-        if text is None:
-            return [None] * n
-        cells = self._cells(text)
-        gloss_no = self._glosses[target.no].no
+    def _cell_glosses(
+        self, target: _Line, n: int, cell_width: float
+    ) -> tuple[list[str | None], list[int]]:
+        """表の行についた添え訳の行を、セルごとの添え訳と行数にする。なければ n 個の None と 0。"""
+        none: tuple[list[str | None], list[int]] = ([None] * n, [0] * n)
+        gloss = self._glosses.get(target.no)
+        if gloss is None:
+            return none
+        self._used_glosses.add(target.no)
+        cells = self._cells(gloss.s[1:].strip())
         if len(cells) != n:
-            self.add(gloss_no, f"添え訳の列数 {len(cells)} が表の {n} と違います")
-            return [None] * n
+            self.add(gloss.no, f"添え訳の列数 {len(cells)} が表の {n} と違います")
+            return none
         if not any(cells):
-            self.add(gloss_no, "添え訳のセルがすべて空です。書かないか、訳を書いてください")
-            return [None] * n
-        return [c or None for c in cells]
+            self.add(gloss.no, "添え訳のセルがすべて空です。書かないか、訳を書いてください")
+            return none
+        counts = [
+            self.fit(gloss.no, c, "添え訳", gloss_pt(PT_CELL), cell_width, MAX_GLOSS_LINES)
+            if c
+            else 0
+            for c in cells
+        ]
+        return [c or None for c in cells], counts
+
+    def _check_stack(self, label: str, paragraphs: list[tuple[int, float]]) -> None:
+        """段落（原稿の行, 間隔を含む高さ）を上から積み、下端が最初に枠を超えた段落の行を報告する。"""
+        used = 0.0
+        for no, h in paragraphs:
+            used += h
+            if used > BODY_BOX_H + _EPS:
+                self.add(
+                    no,
+                    f"{label}が枠の高さに収まりません（この項目の下端が {used:.2f}in、"
+                    f"枠は {BODY_BOX_H}in）。項目を短くするか、減らしてください",
+                )
+                return
 
     def _reject_gloss(self, target: _Line, what: str) -> None:
         """添え訳をつけられない行についた添え訳を拒否する。"""
@@ -447,9 +485,9 @@ class _Parser:
                     self.add(ln.no, f"表紙の文は {MAX_COVER_LINES} 行までです")
             else:
                 out.append(_runs(s))
-                glosses.append(self._gloss(ln))
+                glosses.append(self._gloss(ln, PT_COVER_LINE, BODY_WIDTH, 1)[0])
                 self.fit(ln.no, out[-1], "表紙の文", PT_COVER_LINE, BODY_WIDTH, 1)
-        return Cover(title, out, self._gloss(first), glosses)
+        return Cover(title, out, self._gloss(first, PT_COVER_TITLE, BODY_WIDTH)[0], glosses)
 
     # --- 表紙以外 ---
 
@@ -478,7 +516,7 @@ class _Parser:
         if not body:
             self.add(first.no, "見出しだけのスライドです。本文を足してください")
             return None
-        heading_gloss = self._gloss(first)
+        heading_gloss = self._gloss(first, PT_HEADING, BODY_WIDTH, 1)[0]
         result = self._with_heading(heading, body)
         if result is not None and heading_gloss is not None:
             result = replace(result, heading_gloss=heading_gloss)
@@ -499,7 +537,7 @@ class _Parser:
             return None
         text = _runs(s)
         self.fit(first.no, text, "一言", PT_STATEMENT, BODY_WIDTH, 3)
-        return Statement(text, self._gloss(first))
+        return Statement(text, self._gloss(first, PT_STATEMENT, BODY_WIDTH)[0])
 
     def _with_heading(self, heading: str, body: list[_Line]) -> Slide | None:
         if all(_BULLET.match(ln.raw) for ln in body):
@@ -538,28 +576,23 @@ class _Parser:
             return None
         items: list[Text] = []
         glosses: list[str | None] = []
-        counts: list[int] = []
-        for ln in body:
+        # 項目と添え訳の段落を上から積む。項目の間の余白を足して、枠の高さと比べる。
+        paragraphs: list[tuple[int, float]] = []
+        for i, ln in enumerate(body):
             m = _BULLET.match(ln.raw)
             assert m is not None
             if not m.group(1).strip():
                 self.add(ln.no, "箇条書きの項目が空です")
             items.append(_runs(m.group(1).strip()))
-            glosses.append(self._gloss(ln))
-            counts.append(
-                self.fit(ln.no, items[-1], "箇条書きの項目", PT_BULLET, BODY_WIDTH - INDENT, 2)
+            n = self.fit(ln.no, items[-1], "箇条書きの項目", PT_BULLET, BODY_WIDTH - INDENT, 2)
+            paragraphs.append(
+                (ln.no, text_height_in(n, PT_BULLET) + (BULLET_GAP_PT / 72 if i else 0))
             )
-        # 項目の高さの合計に、項目の間の余白を足して、枠の高さと比べる。
-        used = 0.0
-        for i, (ln, n) in enumerate(zip(body, counts, strict=True)):
-            used += text_height_in(n, PT_BULLET) + (BULLET_GAP_PT / 72 if i else 0)
-            if used > BODY_BOX_H + _EPS:
-                self.add(
-                    ln.no,
-                    f"箇条書きが枠の高さに収まりません（この項目の下端が {used:.2f}in、"
-                    f"枠は {BODY_BOX_H}in）。項目を短くするか、減らしてください",
-                )
-                break
+            gloss, g = self._gloss(ln, PT_BULLET, BODY_WIDTH - INDENT)
+            glosses.append(gloss)
+            if gloss is not None:
+                paragraphs.append((self._glosses[ln.no].no, text_height_in(g, gloss_pt(PT_BULLET))))
+        self._check_stack("箇条書き", paragraphs)
         return Bullets(heading, items, item_glosses=glosses)
 
     # --- 図 ---
@@ -594,7 +627,7 @@ class _Parser:
                 valid = False
             else:
                 caption = _runs(cap.s)
-                caption_gloss = self._gloss(cap)
+                caption_gloss = self._gloss(cap, PT_CAPTION, FIGURE_CAPTION_WIDTH)[0]
                 self.fit(cap.no, caption, "図の説明文", PT_CAPTION, FIGURE_CAPTION_WIDTH, 3)
         if len(body) > 2:
             self.add(body[2].no, "図の説明文は 1 行までです")
@@ -612,6 +645,44 @@ class _Parser:
         s = s.removeprefix("|").removesuffix("|")
         return [c.strip() for c in s.split("|")]
 
+    def _row_height(self, ln: _Line, cell_lines: list[int], gloss_lines: list[int]) -> "_RowHeight":
+        """表の 1 行の高さ。セルごとに本文と添え訳を積み、一番高いセルで決まる。"""
+        gloss_no = self._glosses[ln.no].no if ln.no in self._glosses else None
+        gp = gloss_pt(PT_CELL)
+        pad = gloss_lines + [0] * (len(cell_lines) - len(gloss_lines))
+        full = max(
+            (table_row_height_in(n, PT_CELL, g, gp) for n, g in zip(cell_lines, pad, strict=False)),
+            default=table_row_height_in(1, PT_CELL),
+        )
+        plain = max(
+            (table_row_height_in(n, PT_CELL) for n in cell_lines),
+            default=table_row_height_in(1, PT_CELL),
+        )
+        return _RowHeight(ln.no, gloss_no, full, plain)
+
+    def _check_table_height(self, heights: "list[_RowHeight]") -> None:
+        """行を上から積み、下端が最初に枠を超えた行を報告する。添え訳を除いても超えるなら表の行、
+        添え訳を足して初めて超えるなら添え訳の行（その行に添え訳がなければ直前の添え訳）。"""
+        used = plain_used = 0.0
+        last_gloss: int | None = None
+        for row in heights:
+            used += row.full
+            plain_used += row.plain
+            if row.gloss_no is not None:
+                last_gloss = row.gloss_no
+            if used <= BODY_BOX_H + _EPS:
+                continue
+            if plain_used > BODY_BOX_H + _EPS or last_gloss is None:
+                no, bottom = row.no, plain_used
+            else:
+                no, bottom = last_gloss, used
+            self.add(
+                no,
+                f"表が枠の高さに収まりません（この行の下端が {bottom:.2f}in、"
+                f"枠は {BODY_BOX_H}in）。セルを短くするか、行を減らしてください",
+            )
+            return
+
     def _table(self, heading: str, body: list[_Line]) -> Table | None:
         head = body[0]
         for ln in body:
@@ -620,17 +691,15 @@ class _Parser:
                 return None
         header = self._cells(head.s)
         n = len(header)
-        header_glosses = self._cell_glosses(head, n)
         cell_width = BODY_WIDTH / n - 0.2
-        # 行ごとの高さ（行の中で一番行数の多いセルで決まる）。(原稿の行, 高さ) の並び。
-        heights: list[tuple[int, float]] = []
+        header_glosses, header_gloss_lines = self._cell_glosses(head, n, cell_width)
+        # 行ごとの高さ（行の中で一番高いセルで決まる）。添え訳を含む高さと、含まない高さ。
+        heights: list[_RowHeight] = []
         heights.append(
-            (
-                head.no,
-                table_row_height_in(
-                    max(self.fit(head.no, c, "表のセル", PT_CELL, cell_width, 2) for c in header),
-                    PT_CELL,
-                ),
+            self._row_height(
+                head,
+                [self.fit(head.no, c, "表のセル", PT_CELL, cell_width, 2) for c in header],
+                header_gloss_lines,
             )
         )
         ok = True
@@ -662,27 +731,16 @@ class _Parser:
         rows: list[list[Text]] = []
         row_glosses: list[list[str | None]] = []
         for ln in data:
-            row_glosses.append(self._cell_glosses(ln, n))
+            glosses, gloss_lines = self._cell_glosses(ln, n, cell_width)
+            row_glosses.append(glosses)
             cells = self._cells(ln.s)
             if len(cells) != n:
                 self.add(ln.no, f"行の列数 {len(cells)} が見出し行の {n} と違います")
                 ok = False
             rows.append([_runs(c) for c in cells])
-            row_lines = max(
-                (self.fit(ln.no, c, "表のセル", PT_CELL, BODY_WIDTH / n - 0.2, 2) for c in cells),
-                default=1,
-            )
-            heights.append((ln.no, table_row_height_in(row_lines, PT_CELL)))
-        used = 0.0
-        for no, h in heights:
-            used += h
-            if used > BODY_BOX_H + _EPS:
-                self.add(
-                    no,
-                    f"表が枠の高さに収まりません（この行の下端が {used:.2f}in、"
-                    f"枠は {BODY_BOX_H}in）。セルを短くするか、行を減らしてください",
-                )
-                break
+            row_lines = [self.fit(ln.no, c, "表のセル", PT_CELL, cell_width, 2) for c in cells]
+            heights.append(self._row_height(ln, row_lines, gloss_lines))
+        self._check_table_height(heights)
         if not ok:
             return None
         return Table(
@@ -730,14 +788,14 @@ class _Parser:
                 return None
             items: list[Text] = []
             glosses: list[str | None] = []
-            for ln in lines:
+            paragraphs: list[tuple[int, float]] = []
+            for i, ln in enumerate(lines):
                 m = _BULLET.match(ln.raw)
                 assert m is not None
                 if not m.group(1).strip():
                     self.add(ln.no, "箇条書きの項目が空です")
                 items.append(_runs(m.group(1).strip()))
-                glosses.append(self._gloss(ln))
-                self.fit(
+                n = self.fit(
                     ln.no,
                     items[-1],
                     "2 列の箇条書きの項目",
@@ -745,6 +803,20 @@ class _Parser:
                     COLUMN_WIDTH - INDENT,
                     2,
                 )
+                paragraphs.append(
+                    (
+                        ln.no,
+                        text_height_in(n, PT_COLUMN_BULLET)
+                        + (COLUMN_BULLET_GAP_PT / 72 if i else 0),
+                    )
+                )
+                gloss, g = self._gloss(ln, PT_COLUMN_BULLET, COLUMN_WIDTH - INDENT)
+                glosses.append(gloss)
+                if gloss is not None:
+                    paragraphs.append(
+                        (self._glosses[ln.no].no, text_height_in(g, gloss_pt(PT_COLUMN_BULLET)))
+                    )
+            self._check_stack(f"{side}の塊の箇条書き", paragraphs)
             return BulletsBlock(items, glosses)
         stray = next((ln for ln in lines if _BULLET.match(ln.raw)), None)
         if len(lines) > 1:
@@ -763,7 +835,7 @@ class _Parser:
             return None
         text = _runs(only.s)
         self.fit(only.no, text, "2 列の文", PT_COLUMN_TEXT, COLUMN_WIDTH, 3)
-        return TextBlock(text, self._gloss(only))
+        return TextBlock(text, self._gloss(only, PT_COLUMN_TEXT, COLUMN_WIDTH)[0])
 
 
 def parse(text: str, base_dir: Path) -> Deck:
