@@ -13,7 +13,7 @@ Issue: #9
 
 ## 2. 色と大きさの定義
 
-- [ ] 2.1 添え訳の色、大きさの比率、行数の上限、2 列の箇条書きの項目の間隔を定義する
+- [x] 2.1 添え訳の色、大きさの比率、行数の上限、2 列の箇条書きの項目の間隔を定義する
   - Files: `slidekit/palette.py`、`slidekit/fit.py`、`slidekit/render.py`（2 列の箇条書きの間隔 10pt を `fit.py` の定数から読むように変えるだけ）、`tests/test_palette.py`、`tests/test_fit.py`
   - Interface: `palette.GLOSS = "767676"`（`GRID_COLORS` には足さない）。`fit.GLOSS_RATIO = 0.6`、`fit.gloss_pt(pt: float) -> int`（本文の大きさから添え訳の大きさ）、`fit.MAX_GLOSS_LINES = 2`、`fit.COLUMN_BULLET_GAP_PT = 10`
   - Test first: `tests/test_palette.py` で `GLOSS` が `767676` で、`GRID_COLORS` の値に含まれないこと、`tests/test_fit.py` で `gloss_pt` が 40→24、30→18、24→14、22→13、20→12、18→11 を返すことを確かめて赤になる。1.1 のテストは緑のまま

@@ -35,3 +35,19 @@ def test_line_count_is_ceiling_of_width_over_box():
     assert line_count("あ" * 25, 30, 10) == 2
     assert line_count("あ" * 48, 30, 10) == 2
     assert line_count("あ" * 49, 30, 10) == 3
+
+
+def test_gloss_size_is_60_percent_rounded():
+    from slidekit import fit
+
+    assert fit.GLOSS_RATIO == 0.6
+    got = {pt: fit.gloss_pt(pt) for pt in (40, 30, 24, 22, 20, 18)}
+    assert got == {40: 24, 30: 18, 24: 14, 22: 13, 20: 12, 18: 11}
+    assert all(type(v) is int for v in got.values())
+
+
+def test_gloss_limits():
+    from slidekit import fit
+
+    assert fit.MAX_GLOSS_LINES == 2
+    assert fit.COLUMN_BULLET_GAP_PT == 10

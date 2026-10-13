@@ -18,6 +18,7 @@ from slidekit.fit import (
     BODY_BOX_H,
     BULLET_GAP_PT,
     CELL_MARGIN_V,
+    COLUMN_BULLET_GAP_PT,
     PT_BULLET,
     PT_CAPTION,
     PT_CELL,
@@ -261,7 +262,7 @@ def _table(slide, s: Table) -> None:
 def _block(slide, b: Block, x: float) -> None:
     if isinstance(b, BulletsBlock):
         tf = _textbox(slide, "箇条書き", x, BODY_TOP, COLUMN_W, BODY_BOX_H)
-        _paragraphs(tf, b.items, PT_COLUMN_BULLET, INK, True, gap=10)
+        _paragraphs(tf, b.items, PT_COLUMN_BULLET, INK, True, gap=COLUMN_BULLET_GAP_PT)
     elif isinstance(b, ImageBlock):
         _picture(slide, b.grid, b.alt, x, BODY_TOP)
     elif isinstance(b, TextBlock):
