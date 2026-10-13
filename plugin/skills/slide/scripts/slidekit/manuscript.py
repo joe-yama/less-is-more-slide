@@ -105,6 +105,8 @@ class Table:
     header: list[Text]
     rows: list[list[Text]]
     heading_gloss: str | None = None
+    header_glosses: list[str | None] = field(default_factory=list)
+    row_glosses: list[list[str | None]] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -393,6 +395,21 @@ class _Parser:
         self._used_glosses.add(target.no)
         return gloss.s[1:].strip()
 
+    def _cell_glosses(self, target: _Line, n: int) -> list[str | None]:
+        """表の行についた添え訳の行を、セルごとの添え訳にする。なければ n 個の None。"""
+        text = self._gloss(target)
+        if text is None:
+            return [None] * n
+        cells = self._cells(text)
+        gloss_no = self._glosses[target.no].no
+        if len(cells) != n:
+            self.add(gloss_no, f"添え訳の列数 {len(cells)} が表の {n} と違います")
+            return [None] * n
+        if not any(cells):
+            self.add(gloss_no, "添え訳のセルがすべて空です。書かないか、訳を書いてください")
+            return [None] * n
+        return [c or None for c in cells]
+
     def _reject_gloss(self, target: _Line, what: str) -> None:
         """添え訳をつけられない行についた添え訳を拒否する。"""
         gloss = self._glosses.get(target.no)
@@ -603,6 +620,7 @@ class _Parser:
                 return None
         header = self._cells(head.s)
         n = len(header)
+        header_glosses = self._cell_glosses(head, n)
         cell_width = BODY_WIDTH / n - 0.2
         # 行ごとの高さ（行の中で一番行数の多いセルで決まる）。(原稿の行, 高さ) の並び。
         heights: list[tuple[int, float]] = []
@@ -623,6 +641,7 @@ class _Parser:
             self.add(head.no, "表には見出し行の次に区切り行（`|---|---|`）が要ります")
             return None
         sep = body[1]
+        self._reject_gloss(sep, "表の区切り")
         sep_cells = self._cells(sep.s)
         if not all(_TABLE_SEPARATOR_CELL.match(c) for c in sep_cells):
             self.add(sep.no, "表の見出し行の次は区切り行（`|---|---|`）にしてください")
@@ -641,7 +660,9 @@ class _Parser:
             )
             ok = False
         rows: list[list[Text]] = []
+        row_glosses: list[list[str | None]] = []
         for ln in data:
+            row_glosses.append(self._cell_glosses(ln, n))
             cells = self._cells(ln.s)
             if len(cells) != n:
                 self.add(ln.no, f"行の列数 {len(cells)} が見出し行の {n} と違います")
@@ -664,7 +685,13 @@ class _Parser:
                 break
         if not ok:
             return None
-        return Table(heading, [_runs(c) for c in header], rows)
+        return Table(
+            heading,
+            [_runs(c) for c in header],
+            rows,
+            header_glosses=header_glosses,
+            row_glosses=row_glosses,
+        )
 
     # --- 左右 2 列 ---
 

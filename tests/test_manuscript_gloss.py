@@ -11,6 +11,7 @@ from slidekit.manuscript import (
     Figure,
     ManuscriptError,
     Statement,
+    Table,
     TextBlock,
     TwoColumn,
     parse,
@@ -158,3 +159,61 @@ def test_body_emphasis_is_not_rejected_because_of_gloss():
 def test_body_emphasis_with_valid_gloss_passes():
     s = deck(PREFIX + "## H\n- **a**\n^ 訳\n- b\n")[1]
     assert s.item_glosses == ["訳", None]
+
+
+# --- 表 ---
+# 3 行目から: ## H / 4 見出し行 / 5 区切り行 / 6 本文 1 / 7 本文 2
+TABLE = "## H\n| Item | Sales | YoY |\n|---|---|---|\n| A | 10 | 5% |\n| B | 20 | 6% |\n"
+
+
+def table_text(*glosses_after: tuple[int, str]) -> str:
+    """表の原稿。(何行目の次か, 添え訳の行) を後ろから差し込む。"""
+    lines = (PREFIX + TABLE).splitlines()
+    for after, gloss in sorted(glosses_after, reverse=True):
+        lines.insert(after, gloss)
+    return "\n".join(lines) + "\n"
+
+
+def test_table_header_and_row_glosses_per_cell():
+    text = table_text((4, "^ | 品目 | 売上 | 前年比 |"), (6, "^ | A 社 | 10 億 | 5 % |"))
+    t = deck(text)[1]
+    assert isinstance(t, Table)
+    assert t.header_glosses == ["品目", "売上", "前年比"]
+    assert t.row_glosses == [["A 社", "10 億", "5 %"], [None, None, None]]
+    assert len(t.rows) == 2
+
+
+def test_table_gloss_with_empty_cell_is_none():
+    t = deck(table_text((6, "^ | 売上 | | 前年比 |")))[1]
+    assert t.row_glosses[0] == ["売上", None, "前年比"]
+
+
+def test_table_without_gloss_has_none_cells():
+    t = deck(PREFIX + TABLE)[1]
+    assert t.header_glosses == [None, None, None]
+    assert t.row_glosses == [[None, None, None], [None, None, None]]
+    assert t.heading_gloss is None
+
+
+def test_table_heading_gloss():
+    t = deck(PREFIX + TABLE.replace("## H\n", "## H\n^ 見出し\n"))[1]
+    assert t.heading_gloss == "見出し"
+
+
+def test_table_gloss_wrong_cell_count():
+    assert bad_lines(table_text((6, "^ | 売上 | 前年比 |"))) == [7]
+    assert bad_lines(table_text((4, "^ | a | b | c | d |"))) == [5]
+
+
+def test_table_gloss_all_empty():
+    assert bad_lines(table_text((6, "^ | | | |"))) == [7]
+
+
+def test_table_gloss_after_separator():
+    assert bad_lines(table_text((5, "^ | a | b | c |"))) == [6]
+
+
+def test_table_gloss_bold_in_cell():
+    got = problems(table_text((6, "^ | **a** | b | c |")))
+    assert [line for line, _ in got] == [7]
+    assert "添え訳の中に強調は書けません" in got[0][1]
