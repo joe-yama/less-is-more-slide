@@ -21,3 +21,6 @@ Read this when tests or CI fail in an unexpected way, when writing a new guardia
 ## 2. Green is not guardian
 
 <!-- For each: the test that stayed green under a mutation, why it did, and how it was fixed. -->
+
+- **add-gloss: 続けて 2 行の添え訳を受け付けるように壊しても、拒否のテストが緑のままだった。** テストは拒否された行番号だけを比べていた。本来の判定を外すと、2 行目の添え訳は 1 行目の添え訳に結びつき、`parse` の最後の判定（「この行には添え訳をつけられません」）が同じ行を拒否した。行番号が同じなので、テストは 2 つの経路を区別できなかった。理由の文（「続いています」）も確かめるようにして赤になった（10ac6ba）。拒否のテストは、行番号に加えて理由の文の一部も確かめる。同じ形のテストがほかにも残っている（add-gloss の Proposals）。
+- **add-gloss: 上限まで書いても収まることのテストが、解析だけで終わっていた。** spec のシナリオの「枠の高さに収まる」を誰も確かめておらず、最終レビューが寸法を計算して見つけた。生成した PPTX の枠ごとに、行数 × 大きさ × 1.5 ÷ 72 を枠の高さと比べるテストを足した。シナリオの THEN が 2 つあるときは、両方にテストを対応づける。
