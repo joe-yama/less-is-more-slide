@@ -56,7 +56,7 @@ Issue: #9
   - Test first: 次を確かめて赤になる。箇条書きの項目の段落のすぐ次の段落が添え訳で 14pt、行頭の記号がなく（`buNone`）、`marL` 0.4 インチ・`indent` 0 で、文字の左端が項目の本文の左端（`marL + indent` = 0.4 インチ）と同じ、段落の前の間隔が 0。2 列の箇条書きと文で同じく 13pt。図の説明文の段落のすぐ次の段落が 12pt。表のセルの 2 つ目の段落が 11pt で、添え訳のないセルは段落が 1 つだけ。色・書体・太字・左寄せは 4.1 と同じ
   - Review: solo / Risk: ui
 
-- [ ] 4.3 確認用の原稿を足し、配色の要件のテストを 5 色に直す
+- [x] 4.3 確認用の原稿を足し、配色の要件のテストを 5 色に直す
   - Files: `examples/bilingual.md`（新規。英語の本文と日本語の添え訳で、6 種のレイアウトとすべての対象を 1 つずつ含む、5〜7 枚の原稿）、`tests/test_render.py`（`COLORS` を 5 色に）、`tests/test_render_gloss.py`、`tests/test_examples.py`
   - Test first: `examples/bilingual.md` から生成でき、すべての文字と線の色が 5 色のどれかで、`767676` の文字は添え訳の段落だけにあり、すべての対象（delta spec「すべての対象に添え訳をつける」）に添え訳が描かれていることを確かめて赤になる。`examples/sample.md` の出力のどの文字にも `767676` がないことも確かめる
   - Review: batch C / Risk: none

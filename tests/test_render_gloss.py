@@ -1,5 +1,7 @@
 """添え訳の描画（表紙・一言・見出し）。delta spec「添え訳の見た目」「添え訳の配置」。"""
 
+import re
+import zipfile
 from pathlib import Path
 
 import pytest
@@ -192,3 +194,74 @@ def test_table_cell_gloss(tmp_path):
     check_gloss_paragraph(row1[1][1], "に", 11)
     row2 = [table.cell(2, c).text_frame.paragraphs for c in range(3)]
     assert [len(p) for p in row2] == [1, 1, 1]
+
+
+# --- 確認用の原稿（examples/bilingual.md）---
+
+EXAMPLES = Path(__file__).parent.parent / "examples"
+BILINGUAL = EXAMPLES / "bilingual.md"
+FIVE_COLORS = {"FFFFFF", "1A1A1A", "6B6B6B", "B23A2E", "767676"}
+
+
+def expected_glosses() -> list[str]:
+    out = []
+    for ln in BILINGUAL.read_text(encoding="utf-8").splitlines():
+        if not ln.startswith("^ "):
+            continue
+        body = ln[2:].strip()
+        if body.startswith("|"):
+            out += [c.strip() for c in body.strip("|").split("|") if c.strip()]
+        else:
+            out.append(body)
+    return out
+
+
+def paragraphs_with_color(prs, rgb: str) -> tuple[list[str], list[str]]:
+    """(rgb の文字だけの段落の文字, rgb と別の色を混ぜた段落の文字)"""
+    only, mixed = [], []
+    for slide in prs.slides:
+        frames = []
+        for sh in slide.shapes:
+            if sh.has_text_frame:
+                frames.append(sh.text_frame)
+            elif sh.has_table:
+                frames += [c.text_frame for row in sh.table.rows for c in row.cells]
+        for tf in frames:
+            for p in tf.paragraphs:
+                cols = {str(r.font.color.rgb) for r in p.runs}
+                if rgb in cols:
+                    (only if cols == {rgb} else mixed).append(p.text)
+    return only, mixed
+
+
+@pytest.fixture(scope="module")
+def bilingual_pptx(tmp_path_factory) -> Path:
+    out = tmp_path_factory.mktemp("bilingual") / "bilingual.pptx"
+    render(parse(BILINGUAL.read_text(encoding="utf-8"), EXAMPLES), out)
+    return out
+
+
+def test_bilingual_uses_only_the_five_colors(bilingual_pptx):
+    used = set()
+    with zipfile.ZipFile(bilingual_pptx) as z:
+        for n in z.namelist():
+            if re.fullmatch(r"ppt/slides/slide\d+\.xml", n):
+                xml = z.read(n).decode("utf-8")
+                used |= {c.upper() for c in re.findall(r'srgbClr val="([0-9A-Fa-f]{6})"', xml)}
+    assert "767676" in used
+    assert used <= FIVE_COLORS
+
+
+def test_bilingual_gloss_color_is_only_on_gloss_paragraphs(bilingual_pptx):
+    only, mixed = paragraphs_with_color(Presentation(str(bilingual_pptx)), "767676")
+    assert not mixed
+    assert sorted(only) == sorted(expected_glosses())
+
+
+def test_bilingual_draws_a_gloss_for_every_target(bilingual_pptx):
+    kinds = {type(s) for s in parse(BILINGUAL.read_text(encoding="utf-8"), EXAMPLES).slides}
+    assert len(kinds) == 6
+    # 原稿の添え訳の数: 表紙 3、一言 1、見出し 4（箇条書き・図・表・2 列）、箇条書き 3、図 1、表 3（見出し行 3 + 本文 6）、2 列 3
+    assert len(expected_glosses()) == 3 + 1 + 4 + 3 + 1 + 9 + 3
+    only, _ = paragraphs_with_color(Presentation(str(bilingual_pptx)), "767676")
+    assert len(only) == len(expected_glosses())
