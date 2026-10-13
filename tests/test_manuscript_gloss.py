@@ -124,7 +124,9 @@ def test_gloss_after_column_break():
 
 
 def test_two_glosses_in_a_row_rejects_second():
-    assert bad_lines(PREFIX + "## H\n- a\n^ 一\n^ 二\n") == [6]
+    got = problems(PREFIX + "## H\n- a\n^ 一\n^ 二\n")
+    assert [line for line, _ in got] == [6]
+    assert "続いています" in got[0][1]
 
 
 def test_gloss_on_cover_start_and_after_blank():
