@@ -30,6 +30,9 @@ from slidekit.fit import (
     PT_PAGE_NUMBER,
     PT_STATEMENT,
     TABLE_ROW_H,
+    gloss_pt,
+    line_count,
+    text_height_in,
 )
 from slidekit.manuscript import (
     Block,
@@ -39,13 +42,14 @@ from slidekit.manuscript import (
     Deck,
     Figure,
     ImageBlock,
+    Run,
     Statement,
     Table,
     Text,
     TextBlock,
     TwoColumn,
 )
-from slidekit.palette import ACCENT, GRAY, INK, PAPER
+from slidekit.palette import ACCENT, GLOSS, GRAY, INK, PAPER
 from slidekit.png import encode_png
 
 FONT = "メイリオ"
@@ -125,7 +129,22 @@ def _textbox(slide, name, x, y, w, h, anchor=MSO_ANCHOR.TOP):
     return box.text_frame
 
 
-def _paragraphs(tf, items: list[Text], pt: float, color: str, bullets: bool, gap: float = 8):
+def _gloss_paragraph(tf, text: str, pt: float, first: bool = False) -> None:
+    """添え訳の段落。対象の段落のすぐ次に置き、前の間隔は 0。"""
+    p = tf.paragraphs[0] if first else tf.add_paragraph()
+    _fill_paragraph(p, (Run(text),), gloss_pt(pt), GLOSS)
+    p.space_before = Pt(0)
+
+
+def _paragraphs(
+    tf,
+    items: list[Text],
+    pt: float,
+    color: str,
+    bullets: bool,
+    gap: float = 8,
+    glosses: list[str | None] | None = None,
+):
     for i, text in enumerate(items):
         p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
         _fill_paragraph(p, text, pt, color)
@@ -133,6 +152,8 @@ def _paragraphs(tf, items: list[Text], pt: float, color: str, bullets: bool, gap
             p.space_before = Pt(gap)
         if bullets:
             _bulletize(p)
+        if glosses is not None and glosses[i] is not None:
+            _gloss_paragraph(tf, glosses[i], pt)
 
 
 def _title(slide, text: str, x, y, w, h, pt: float, anchor=MSO_ANCHOR.TOP) -> None:
@@ -145,6 +166,15 @@ def _title(slide, text: str, x, y, w, h, pt: float, anchor=MSO_ANCHOR.TOP) -> No
     run = p.add_run()
     run.text = text
     _style_run(run, pt, INK)
+
+
+def _heading_gloss(slide, text: str) -> None:
+    """見出しの添え訳。見出し 1 行分の枠の下から始め、本文の枠（1.8 インチから）と重ならない。"""
+    top = HEAD_TOP + text_height_in(1, PT_HEADING)
+    tf = _textbox(
+        slide, "見出しの添え訳", MARGIN_X, top, BODY_W, text_height_in(1, gloss_pt(PT_HEADING))
+    )
+    _gloss_paragraph(tf, text, PT_HEADING, first=True)
 
 
 def _page_number(slide, n: int) -> None:
@@ -189,15 +219,22 @@ def _white_background(slide) -> None:
 
 
 def _cover(slide, s: Cover) -> None:
-    _title(slide, s.title, MARGIN_X, 1.6, BODY_W, 2.2, PT_COVER_TITLE, MSO_ANCHOR.BOTTOM)
+    shift = 0.0
+    if s.title_gloss is not None:
+        n = line_count(s.title_gloss, gloss_pt(PT_COVER_TITLE), BODY_W)
+        shift = text_height_in(n, gloss_pt(PT_COVER_TITLE))
+        tf = _textbox(slide, "表紙のタイトルの添え訳", MARGIN_X, 3.8 - shift, BODY_W, shift)
+        _gloss_paragraph(tf, s.title_gloss, PT_COVER_TITLE, first=True)
+    _title(slide, s.title, MARGIN_X, 1.6 - shift, BODY_W, 2.2, PT_COVER_TITLE, MSO_ANCHOR.BOTTOM)
     if s.lines:
-        tf = _textbox(slide, "表紙の文", MARGIN_X, 4.1, BODY_W, 1.8)
-        _paragraphs(tf, s.lines, PT_COVER_LINE, GRAY, False)
+        has_gloss = any(g is not None for g in s.line_glosses)
+        tf = _textbox(slide, "表紙の文", MARGIN_X, 4.1, BODY_W, 2.4 if has_gloss else 1.8)
+        _paragraphs(tf, s.lines, PT_COVER_LINE, GRAY, False, glosses=s.line_glosses)
 
 
 def _statement(slide, s: Statement) -> None:
     tf = _textbox(slide, "一言", MARGIN_X, HEAD_TOP, BODY_W, 7.5 - 2 * HEAD_TOP, MSO_ANCHOR.MIDDLE)
-    _paragraphs(tf, [s.text], PT_STATEMENT, INK, False)
+    _paragraphs(tf, [s.text], PT_STATEMENT, INK, False, glosses=[s.gloss])
 
 
 def _bullets(slide, s: Bullets) -> None:
@@ -349,7 +386,11 @@ def render(deck: Deck, out_path: Path) -> None:
         elif isinstance(s, Statement):
             _statement(slide, s)
         else:
-            _title(slide, s.heading, MARGIN_X, HEAD_TOP, BODY_W, 0.9, PT_HEADING)
+            gloss = s.heading_gloss
+            head_h = 0.9 if gloss is None else text_height_in(1, PT_HEADING)
+            _title(slide, s.heading, MARGIN_X, HEAD_TOP, BODY_W, head_h, PT_HEADING)
+            if gloss is not None:
+                _heading_gloss(slide, gloss)
             if isinstance(s, Bullets):
                 _bullets(slide, s)
             elif isinstance(s, Figure):
