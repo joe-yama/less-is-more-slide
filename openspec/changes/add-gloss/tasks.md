@@ -21,7 +21,7 @@ Issue: #9
 
 ## 3. 原稿の解析と判定
 
-- [ ] 3.1 添え訳の行を対象に結びつけ、表以外の対象のデータに持たせ、拒否の規則を加える
+- [x] 3.1 添え訳の行を対象に結びつけ、表以外の対象のデータに持たせ、拒否の規則を加える
   - Files: `slidekit/manuscript.py`、`tests/test_manuscript_gloss.py`（新規）
   - Interface: design.md「データの持ち方」のフィールド（`Cover.title_gloss`、`Cover.line_glosses`、`Statement.gloss`、`heading_gloss`、`Bullets.item_glosses`、`BulletsBlock.item_glosses`、`Figure.caption_gloss`、`TextBlock.gloss`）。型は `str | None` と、その並び（`list[str | None]`）
   - Test first: `tests/test_manuscript_gloss.py` が次を確かめて赤になる。表紙のタイトルと文、一言、見出し、箇条書きの項目、2 列の項目と文、図の説明文の添え訳が各フィールドに入ること。添え訳があっても箇条書きの項目の数が変わらないこと。拒否と行番号: スライドの先頭、空行の直後、画像の行（図と 2 列）・`|||` の直後、続けて 2 行（2 行目の行番号）、`**`、`^` だけの行、`^訳`、添え訳の中の絵文字・リンク・インラインコード・`__強調__`。添え訳の `**` 以外の強調がないスライドで、本文の強調 1 か所が拒否されないこと（添え訳を数えない）。添え訳のない原稿の解析結果のいまのフィールドが変わらないこと（既存のテストが緑のまま）

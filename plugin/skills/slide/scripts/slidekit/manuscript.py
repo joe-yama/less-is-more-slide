@@ -1,7 +1,7 @@
 """原稿の解析と全規則の検証。違反は最初の 1 件で止めず、すべて集めてから例外にする。"""
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from slidekit.fit import (
@@ -70,17 +70,22 @@ Text = tuple[Run, ...]
 class Cover:
     title: str
     lines: list[Text]
+    title_gloss: str | None = None
+    line_glosses: list[str | None] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
 class Statement:
     text: Text
+    gloss: str | None = None
 
 
 @dataclass(frozen=True)
 class Bullets:
     heading: str
     items: list[Text]
+    heading_gloss: str | None = None
+    item_glosses: list[str | None] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -90,6 +95,8 @@ class Figure:
     ref: str
     grid: Grid
     caption: Text | None
+    heading_gloss: str | None = None
+    caption_gloss: str | None = None
 
 
 @dataclass(frozen=True)
@@ -97,11 +104,13 @@ class Table:
     heading: str
     header: list[Text]
     rows: list[list[Text]]
+    heading_gloss: str | None = None
 
 
 @dataclass(frozen=True)
 class BulletsBlock:
     items: list[Text]
+    item_glosses: list[str | None] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -114,6 +123,7 @@ class ImageBlock:
 @dataclass(frozen=True)
 class TextBlock:
     text: Text
+    gloss: str | None = None
 
 
 Block = BulletsBlock | ImageBlock | TextBlock
@@ -124,6 +134,7 @@ class TwoColumn:
     heading: str
     left: Block
     right: Block
+    heading_gloss: str | None = None
 
 
 Slide = Cover | Statement | Bullets | Figure | Table | TwoColumn
@@ -154,6 +165,7 @@ class _Line:
         return self.raw.strip()
 
 
+_GLOSS_MARK = "^"
 _EMPHASIS = re.compile(r"\*\*(.+?)\*\*")
 _BULLET = re.compile(r"^- (.*)$")
 _IMAGE = re.compile(r"^!\[([^\]]*)\]\(([^)]*)\)$")
@@ -206,6 +218,9 @@ class _Parser:
     def __init__(self, base_dir: Path):
         self.base_dir = base_dir
         self.problems: list[Problem] = []
+        # 現在のスライドの添え訳。結びつけた対象の原稿の行番号 → 添え訳の行。
+        self._glosses: dict[int, _Line] = {}
+        self._used_glosses: set[int] = set()
 
     def add(self, line: int, message: str) -> None:
         p = Problem(line, None, message)
@@ -251,9 +266,13 @@ class _Parser:
                         start, "空のスライドです。内容を書くか、区切りの `---` を消してください"
                     )
                 continue
+            lines = self._split_glosses(lines)
             slide = self._cover(lines) if index == 0 else self._slide(lines)
             if slide is not None:
                 slides.append(slide)
+                for target_no, gloss in self._glosses.items():
+                    if target_no not in self._used_glosses:
+                        self.add(gloss.no, "この行には添え訳をつけられません")
         return Deck(slides)
 
     # --- 行ごとの規則 ---
@@ -312,6 +331,75 @@ class _Parser:
                         self.add(ln.no, "強調は 1 枚のスライドに 1 か所までです")
         return tainted
 
+    # --- 添え訳 ---
+
+    def _split_glosses(self, lines: list[_Line]) -> list[_Line]:
+        """`^` の行を取り除き、すぐ前の行に結びつける。取り除いた後の行を返す。"""
+        self._glosses = {}
+        self._used_glosses = set()
+        kept: list[_Line] = []
+        prev: _Line | None = None
+        for ln in lines:
+            if not ln.s.startswith(_GLOSS_MARK):
+                kept.append(ln)
+                prev = ln
+                continue
+            valid = self._check_gloss(ln)
+            if prev is None or prev.no != ln.no - 1:
+                self.add(ln.no, "添え訳をつける対象がありません。対象の行のすぐ次に書いてください")
+            elif prev.s.startswith(_GLOSS_MARK):
+                self.add(ln.no, "添え訳は 1 つの行に 1 つだけです（添え訳が続いています）")
+            elif valid:
+                self._glosses[prev.no] = ln
+            prev = ln
+        return kept
+
+    def _check_gloss(self, ln: _Line) -> bool:
+        """添え訳の書式と、本文と同じインラインの規則を見る。"""
+        s = ln.s
+        body = s[1:]
+        if not body.strip():
+            self.add(ln.no, "添え訳が空です。`^ ` の後に訳を書いてください")
+            return False
+        if not body[0].isspace():
+            self.add(ln.no, "`^` の次には空白が要ります（`^ 訳`）")
+            return False
+        ok = True
+        if "`" in s:
+            self.add(ln.no, "インラインコード（`` ` ``）は使えません")
+            ok = False
+        if _LINK.search(s):
+            self.add(ln.no, "リンクは使えません")
+            ok = False
+        if re.search(r"__.+?__", s):
+            self.add(ln.no, "`__強調__` は使えません。強調は `**語句**` だけです")
+            ok = False
+        if re.search(r"~~.+?~~", s):
+            self.add(ln.no, "`~~取り消し~~` は使えません")
+            ok = False
+        if "**" in s:
+            self.add(ln.no, "添え訳の中に強調は書けません")
+            ok = False
+        if _PAIRED_STAR.search(s.replace("**", "")):
+            self.add(ln.no, "`*強調*` は使えません。強調は `**語句**` だけです")
+            ok = False
+        return ok
+
+    def _gloss(self, target: _Line) -> str | None:
+        """対象の行についた添え訳の文字。なければ None。"""
+        gloss = self._glosses.get(target.no)
+        if gloss is None:
+            return None
+        self._used_glosses.add(target.no)
+        return gloss.s[1:].strip()
+
+    def _reject_gloss(self, target: _Line, what: str) -> None:
+        """添え訳をつけられない行についた添え訳を拒否する。"""
+        gloss = self._glosses.get(target.no)
+        if gloss is not None:
+            self._used_glosses.add(target.no)
+            self.add(gloss.no, f"{what}の行に添え訳はつけられません")
+
     # --- 表紙 ---
 
     def _cover(self, lines: list[_Line]) -> Cover | None:
@@ -326,6 +414,7 @@ class _Parser:
             self.add(first.no, "表紙のタイトルが空です")
         rest = lines[1:]
         out: list[Text] = []
+        glosses: list[str | None] = []
         for i, ln in enumerate(rest):
             s = ln.s
             if s.startswith("# "):
@@ -341,8 +430,9 @@ class _Parser:
                     self.add(ln.no, f"表紙の文は {MAX_COVER_LINES} 行までです")
             else:
                 out.append(_runs(s))
+                glosses.append(self._gloss(ln))
                 self.fit(ln.no, out[-1], "表紙の文", PT_COVER_LINE, BODY_WIDTH, 1)
-        return Cover(title, out)
+        return Cover(title, out, self._gloss(first), glosses)
 
     # --- 表紙以外 ---
 
@@ -371,7 +461,11 @@ class _Parser:
         if not body:
             self.add(first.no, "見出しだけのスライドです。本文を足してください")
             return None
-        return self._with_heading(heading, body)
+        heading_gloss = self._gloss(first)
+        result = self._with_heading(heading, body)
+        if result is not None and heading_gloss is not None:
+            result = replace(result, heading_gloss=heading_gloss)
+        return result
 
     def _statement(self, lines: list[_Line]) -> Statement | None:
         first = lines[0]
@@ -388,7 +482,7 @@ class _Parser:
             return None
         text = _runs(s)
         self.fit(first.no, text, "一言", PT_STATEMENT, BODY_WIDTH, 3)
-        return Statement(text)
+        return Statement(text, self._gloss(first))
 
     def _with_heading(self, heading: str, body: list[_Line]) -> Slide | None:
         if all(_BULLET.match(ln.raw) for ln in body):
@@ -426,6 +520,7 @@ class _Parser:
             )
             return None
         items: list[Text] = []
+        glosses: list[str | None] = []
         counts: list[int] = []
         for ln in body:
             m = _BULLET.match(ln.raw)
@@ -433,6 +528,7 @@ class _Parser:
             if not m.group(1).strip():
                 self.add(ln.no, "箇条書きの項目が空です")
             items.append(_runs(m.group(1).strip()))
+            glosses.append(self._gloss(ln))
             counts.append(
                 self.fit(ln.no, items[-1], "箇条書きの項目", PT_BULLET, BODY_WIDTH - INDENT, 2)
             )
@@ -447,7 +543,7 @@ class _Parser:
                     f"枠は {BODY_BOX_H}in）。項目を短くするか、減らしてください",
                 )
                 break
-        return Bullets(heading, items)
+        return Bullets(heading, items, item_glosses=glosses)
 
     # --- 図 ---
 
@@ -470,7 +566,9 @@ class _Parser:
 
     def _figure(self, heading: str, body: list[_Line]) -> Figure | None:
         image = self._image(body[0])
+        self._reject_gloss(body[0], "画像")
         caption: Text | None = None
+        caption_gloss: str | None = None
         valid = True
         if len(body) >= 2:
             cap = body[1]
@@ -479,6 +577,7 @@ class _Parser:
                 valid = False
             else:
                 caption = _runs(cap.s)
+                caption_gloss = self._gloss(cap)
                 self.fit(cap.no, caption, "図の説明文", PT_CAPTION, FIGURE_CAPTION_WIDTH, 3)
         if len(body) > 2:
             self.add(body[2].no, "図の説明文は 1 行までです")
@@ -486,7 +585,7 @@ class _Parser:
         if image is None or not valid:
             return None
         alt, ref, grid = image
-        return Figure(heading, alt, ref, grid, caption)
+        return Figure(heading, alt, ref, grid, caption, caption_gloss=caption_gloss)
 
     # --- 表 ---
 
@@ -579,6 +678,7 @@ class _Parser:
         left_lines = body[: breaks[0]]
         right_end = breaks[1] if len(breaks) > 1 else len(body)
         right_lines = body[breaks[0] + 1 : right_end]
+        self._reject_gloss(brk, "`|||`")
         left = self._block(left_lines, brk, "左")
         right = self._block(right_lines, brk, "右")
         if not ok or left is None or right is None:
@@ -602,12 +702,14 @@ class _Parser:
                 )
                 return None
             items: list[Text] = []
+            glosses: list[str | None] = []
             for ln in lines:
                 m = _BULLET.match(ln.raw)
                 assert m is not None
                 if not m.group(1).strip():
                     self.add(ln.no, "箇条書きの項目が空です")
                 items.append(_runs(m.group(1).strip()))
+                glosses.append(self._gloss(ln))
                 self.fit(
                     ln.no,
                     items[-1],
@@ -616,7 +718,7 @@ class _Parser:
                     COLUMN_WIDTH - INDENT,
                     2,
                 )
-            return BulletsBlock(items)
+            return BulletsBlock(items, glosses)
         stray = next((ln for ln in lines if _BULLET.match(ln.raw)), None)
         if len(lines) > 1:
             extra = lines[1] if stray is None or stray is lines[0] else stray
@@ -624,6 +726,7 @@ class _Parser:
             return None
         only = lines[0]
         if _IMAGE.match(only.s):
+            self._reject_gloss(only, "画像")
             image = self._image(only)
             if image is None:
                 return None
@@ -633,7 +736,7 @@ class _Parser:
             return None
         text = _runs(only.s)
         self.fit(only.no, text, "2 列の文", PT_COLUMN_TEXT, COLUMN_WIDTH, 3)
-        return TextBlock(text)
+        return TextBlock(text, self._gloss(only))
 
 
 def parse(text: str, base_dir: Path) -> Deck:
