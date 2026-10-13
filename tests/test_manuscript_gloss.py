@@ -4,7 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from slidekit.fit import line_count
+from slidekit import fit
+from slidekit.fit import gloss_pt, line_count, text_height_in
 from slidekit.manuscript import (
     Bullets,
     BulletsBlock,
@@ -17,6 +18,7 @@ from slidekit.manuscript import (
     TwoColumn,
     parse,
 )
+from slidekit.render import render
 
 
 def deck(text: str):
@@ -349,14 +351,42 @@ def test_table_height_rejects_table_row_when_plain_already_overflows():
     assert bad_lines(PREFIX + head + "\n".join(rows) + "\n") == [11]
 
 
-def test_limits_fit_without_height_check():
-    cover = f"# {zen(40, BODY, 2)}\n^ {zen(24, BODY, 2)}\n"
+def limit_deck() -> str:
+    """上限まで書いた原稿。表紙・一言・図の説明文・2 列の文。"""
+    t, g = fit.PT_COVER_TITLE, fit.PT_COVER_LINE
+    cover = f"# {zen(t, BODY, 2)}\n^ {zen(gloss_pt(t), BODY, 2)}\n"
     for _ in range(3):
-        cover += f"{zen(20, BODY, 1)}\n^ {zen(12, BODY, 1)}\n"
-    deck(cover)
-    deck(PREFIX + f"{zen(40, BODY, 3)}\n^ {zen(24, BODY, 2)}\n")
-    deck(PREFIX + f"## H\n![x](icon:gear)\n{zen(20, CAPTION, 3)}\n^ {zen(12, CAPTION, 2)}\n")
-    deck(PREFIX + f"## H\nA\n|||\n{zen(22, COLUMN, 3)}\n^ {zen(13, COLUMN, 2)}\n")
+        cover += f"{zen(g, BODY, 1)}\n^ {zen(gloss_pt(g), BODY, 1)}\n"
+    st, cp, ct = fit.PT_STATEMENT, fit.PT_CAPTION, fit.PT_COLUMN_TEXT
+    return (
+        cover
+        + f"---\n{zen(st, BODY, 3)}\n^ {zen(gloss_pt(st), BODY, 2)}\n"
+        + f"---\n## H\n![x](icon:gear)\n{zen(cp, CAPTION, 3)}\n^ {zen(gloss_pt(cp), CAPTION, 2)}\n"
+        + f"---\n## H\nA\n|||\n{zen(ct, COLUMN, 3)}\n^ {zen(gloss_pt(ct), COLUMN, 2)}\n"
+    )
+
+
+def test_limits_fit_in_box_height(tmp_path):
+    text = limit_deck()
+    deck(text)  # 上限まで書いても生成できる
+    out = tmp_path / "limit.pptx"
+    render(parse(text, Path(".")), out)
+    from pptx import Presentation
+
+    checked = 0
+    for slide in Presentation(str(out)).slides:
+        for shape in slide.shapes:
+            if shape.name == "ページ番号" or not shape.has_text_frame:
+                continue
+            width = shape.width / 914400
+            used = 0.0
+            for p in shape.text_frame.paragraphs:
+                pt = p.runs[0].font.size.pt
+                used += text_height_in(line_count(p.text, pt, width), pt)
+                used += p.space_before.pt / 72 if p.space_before is not None else 0
+            assert used <= shape.height / 914400 + 1e-6, (shape.name, used, shape.height / 914400)
+            checked += 1
+    assert checked >= 9  # 表紙 3 + 一言 1 + 見出し 2 + 図の説明 + 2 列の左右
 
 
 def test_build_cli_reports_path_line_reason(tmp_path, capsys):
