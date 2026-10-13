@@ -112,3 +112,7 @@ Issue: #9
 - （batch B レビュー、Minor）表紙の文が 4 行以上で、上限を超えた行に添え訳があると、「表紙の文は 3 行までです」に加えて「この行には添え訳をつけられません」も出る。上限を超えた分岐で添え訳を読み捨てれば 1 件になる。
 - （batch B レビュー、Minor）`^2 is square` のような行で、同じ行番号に「`^` の次に空白がない」と「対象がない」の 2 件が出る。
 - （batch B レビュー、Minor）`manuscript.py` の `_check_stack` の理由の文が、はみ出した段落が添え訳のときも「この項目の下端」になる。行番号は正しい。
+- （4.2 レビュー、Minor）`render.py` の表のセルの `glosses[ri][ci] if glosses else None` の `else` は通らない（`glosses` は見出し行を必ず含む）。条件を外せる。
+- （4.2 レビュー、Minor）添え訳のある表で、保存したファイルの表の枠と行の高さは最小値（0.6 インチ）のまま。PowerPoint は描くときに行を伸ばす。添え訳のある行だけ `fit.table_row_height_in` の高さにすれば、添え訳のない出力を変えずにファイルの値も実際に合う。
+- （4.2 レビュー、Minor）`tests/test_render_gloss.py` の `text_left` の docstring が、補助関数のしていないこと（1 行目の文字に限る）を書いている。
+- （4.2 レビュー、Minor）`manuscript.py` のデータクラスの添え訳の並びの既定値が `[]` なので、解析器を通さずに `Bullets` などを作ると `render.py` の `_paragraphs` で IndexError になる。いまは解析器だけが作るので不具合ではない。
