@@ -80,7 +80,7 @@ Issue: #9
 
 ## 6. 確認
 
-- [ ] 6.1 守りのテストを `harness:mutation-check` で確かめる
+- [x] 6.1 守りのテストを `harness:mutation-check` で確かめる
   - Verify: それぞれ変えた複製で、対応するテストが赤になり、変えない複製（対照）では緑になる。結果を ledger に記す。
     - `fit.BULLET_GAP_PT` を 12 から 13 にした複製: 1.1 のテストが赤
     - 箇条書きの添え訳の段落の `buNone` を外した複製と、`marL` を 0 にした複製: 4.2 のテストが赤
@@ -89,7 +89,7 @@ Issue: #9
     - 添え訳の色を `GRAY` にした複製: 4.1 と 4.3 のテストが赤
   - Review: batch D / Risk: none
 
-- [ ] 6.2 すべてのコマンドを通し、確認用の PPTX を作る
+- [x] 6.2 すべてのコマンドを通し、確認用の PPTX を作る
   - Verify: `uv run pytest` がすべて緑、`uv run ruff check . && uv run ruff format --check .` が通る。`uv run plugin/skills/slide/scripts/build.py examples/bilingual.md -o <一時フォルダ>/bilingual.pptx` と `examples/sample.md` の生成が終了コード 0。PR の本文に、PO が受け入れで PowerPoint で開いて見るファイルの作り方と、見る点（見出しと添え訳が重ならないか、添え訳が読める濃さか、表の 11pt が投影で読めるか）を書く
   - Review: batch D / Risk: none
 
