@@ -68,7 +68,7 @@ Issue: #9
   - Test first: `tests/test_skill_docs.py` で、`SKILL.md` の例に `^ ` の行があること、`format.md` に `^ ` と大きさ・上限・拒否の記述があること、`writing.md` に添え訳の規則があることを確かめて赤になる。`SKILL.md` と `format.md` の例がそのまま生成できることは既存のテストで確かめる
   - Review: batch C / Risk: none
 
-- [ ] 5.2 作成役と点検役の定義に、添え訳の観点を足す
+- [x] 5.2 作成役と点検役の定義に、添え訳の観点を足す
   - Files: `plugin/agents/writer.md`、`plugin/agents/critic.md`、`tests/test_plugin.py`
   - Test first: `tests/test_plugin.py` で、`writer.md` に「添え訳を本文と同じ意味にし、片方にしかない情報を作らない」こと、`critic.md` に「添え訳と本文の意味が合っているか、片方にしかない情報がないか」を点検することが書いてあるのを確かめて赤になる。`critic.md` の道具が読み取りだけであることは既存のテストのまま
   - Review: batch C / Risk: none
