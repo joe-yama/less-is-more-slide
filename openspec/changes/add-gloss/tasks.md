@@ -107,3 +107,5 @@ Issue: #9
 - slide-plugin「点検役 Agent」: 道具が読み取りだけ、仕込んだ AI っぽさ → 既存。添え訳を点検する観点 → 5.2
 
 ## Proposals
+
+- （batch A レビュー、Minor）`tests/test_fit.py` の `test_gloss_limits` は定数がリテラルと等しいことしか見ていない。振る舞いは 3.3 と 6.1 のテストで守られるので、残すか消すかは後の整理で決める。
