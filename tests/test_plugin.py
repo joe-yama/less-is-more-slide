@@ -116,3 +116,8 @@ def test_critic_checks_the_gloss_against_the_body():
     fields, body = frontmatter(CRITIC)
     assert "添え訳と本文の意味が合っているか、片方にしかない情報がないか" in body
     assert tool_list(fields) == ["Read", "Glob", "Grep"]
+
+
+def test_plugin_version_is_0_2_0_in_both_manifests():
+    assert load(MANIFEST)["version"] == "0.2.0"
+    assert load(MARKETPLACE)["plugins"][0]["version"] == "0.2.0"
