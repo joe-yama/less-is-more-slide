@@ -142,3 +142,126 @@ def test_partially_overlapping_frames_are_rejected_at_the_second_frame():
 def test_frame_label_wider_than_the_frame_is_rejected():
     text = "| 甲 |\n[" + "あ" * 12 + "] 甲\n"  # 12pt で 2.0 > 1.2 - 0.2 + 2*0.15
     assert [line for line, _ in problems(text)] == [2]
+
+
+# --- 矢印の経路 ---
+
+
+def cx(b) -> float:
+    return b.x + b.w / 2
+
+
+def cy(b) -> float:
+    return b.y + b.h / 2
+
+
+def top_of_all(d) -> float:
+    return min([b.y for b in d.boxes] + [f.y for f in d.frames])
+
+
+def bottom_of_all(d) -> float:
+    return max([b.y + b.h for b in d.boxes] + [f.y + f.h for f in d.frames])
+
+
+def test_same_row_arrow_is_horizontal_between_facing_edges():
+    d = lay("| A | B |\nA -> B\n")
+    a, b = box(d, "A"), box(d, "B")
+    (p, q) = d.arrows[0].points
+    assert close(p[0], a.x + a.w) and close(q[0], b.x)
+    assert close(p[1], cy(a)) and close(q[1], cy(a))
+
+
+def test_same_column_arrow_is_vertical_between_bottom_and_top_edges():
+    d = lay("| A |\n| B |\nA -> B\n")
+    a, b = box(d, "A"), box(d, "B")
+    (p, q) = d.arrows[0].points
+    assert close(p[0], cx(a)) and close(q[0], cx(b))
+    assert close(p[1], a.y + a.h) and close(q[1], b.y)
+
+
+def test_different_row_and_column_arrow_is_a_diagonal_between_side_edges():
+    d = lay("| A | |\n| | C |\nA -> C\n")
+    a, c = box(d, "A"), box(d, "C")
+    (p, q) = d.arrows[0].points
+    assert close(p[0], a.x + a.w) and close(p[1], cy(a))
+    assert close(q[0], c.x) and close(q[1], cy(c))
+    assert q[1] > p[1] + EPS
+
+
+def test_arrows_fanning_out_from_one_box_start_at_the_same_point():
+    text = "| | B1 |\n| A | B2 |\n| | B3 |\nA -> B1\nA -> B2\nA -> B3\n"
+    d = lay(text)
+    a = box(d, "A")
+    starts = {(round(p.points[0][0], 6), round(p.points[0][1], 6)) for p in d.arrows}
+    assert starts == {(round(a.x + a.w, 6), round(cy(a), 6))}
+    ys = [p.points[-1][1] for p in d.arrows]
+    assert close(ys[1], cy(a)) and ys[0] < ys[1] < ys[2]
+
+
+def test_arrow_flags_are_carried_over():
+    d = lay("| A | B |\nA -> B (強調, 破線)\n")
+    assert d.arrows[0].emphasis and d.arrows[0].dashed
+
+
+def test_over_route_is_four_points_with_the_horizontal_part_above_everything():
+    d = lay("| A | B |\n[社内] A\nA -> B (上回り)\n")
+    a, b = box(d, "A"), box(d, "B")
+    pts = d.arrows[0].points
+    assert len(pts) == 4
+    assert close(pts[0][0], cx(a)) and close(pts[0][1], a.y)
+    assert close(pts[1][0], cx(a)) and close(pts[2][0], cx(b))
+    assert close(pts[1][1], pts[2][1])
+    assert pts[1][1] < top_of_all(d) - EPS
+    assert close(pts[3][0], cx(b)) and close(pts[3][1], b.y)
+
+
+def test_two_over_routes_use_separate_lanes_both_above_everything():
+    d = lay("| A | B | C | D |\nA -> B (上回り)\nC -> D (上回り)\n")
+    y1, y2 = d.arrows[0].points[1][1], d.arrows[1].points[1][1]
+    assert abs(y1 - y2) > 0.05
+    assert max(y1, y2) < top_of_all(d) - EPS
+
+
+def test_under_route_goes_below_everything():
+    d = lay("| A | B |\n[社内] A\nA -> B (下回り)\n")
+    a, b = box(d, "A"), box(d, "B")
+    pts = d.arrows[0].points
+    assert len(pts) == 4
+    assert close(pts[0][1], a.y + a.h) and close(pts[3][1], b.y + b.h)
+    assert pts[1][1] > bottom_of_all(d) + EPS
+    assert close(pts[1][1], pts[2][1])
+
+
+def test_straight_arrow_across_a_box_is_rejected_with_a_hint():
+    got = problems("| A | B | C |\nA -> C\n")
+    assert [line for line, _ in got] == [2]
+    assert "B" in got[0][1]
+    assert "上回り" in got[0][1] or "下回り" in got[0][1]
+
+
+def test_diagonal_arrow_across_a_box_is_rejected():
+    got = problems("| A | | |\n| | B | |\n| | | C |\nA -> C\n")
+    assert [line for line, _ in got] == [4]
+
+
+def test_round_route_between_boxes_of_the_same_column_is_rejected():
+    got = problems("| A |\n| B |\nA -> B (上回り)\n")
+    assert [line for line, _ in got] == [3]
+
+
+def test_second_round_route_from_the_same_edge_is_rejected():
+    got = problems("| A | B | C |\nA -> B (上回り)\nA -> C (上回り)\n")
+    assert [line for line, _ in got] == [3]
+
+
+def test_round_route_through_another_box_is_rejected():
+    got = problems("| X | |\n| A | B |\nA -> B (上回り)\n")
+    assert [line for line, _ in got] == [3]
+    assert "X" in got[0][1]
+
+
+def test_route_through_a_frame_label_is_rejected():
+    text = "| A | B |\n[社内システム] A\nA -> B (上回り)\n"
+    got = problems(text)
+    assert [line for line, _ in got] == [3]
+    assert "社内システム" in got[0][1]

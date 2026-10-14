@@ -1,6 +1,7 @@
 """構成図の配置の計算（design.md D3〜D7）。座標はインチで、判定と描画が同じ結果を使う。"""
 
 from dataclasses import dataclass, field
+from itertools import pairwise
 
 from slidekit.fit import (
     PT_BOX_LINE,
@@ -9,7 +10,7 @@ from slidekit.fit import (
     text_height_in,
     text_width_em,
 )
-from slidekit.flow import BoxSpec, FlowError, FlowProblem, FlowSpec, GroupSpec
+from slidekit.flow import ArrowSpec, BoxSpec, FlowError, FlowProblem, FlowSpec, GroupSpec
 from slidekit.inline import Text
 
 BOX_PAD_X = 0.12
@@ -303,4 +304,147 @@ def layout_flow(spec: FlowSpec, max_w: float, max_h: float) -> Diagram:
     if problems:
         raise FlowError(sorted(problems, key=lambda p: p.line or 0))
 
-    return Diagram(width, height, placed_boxes, frames)
+    arrows = _route_arrows(spec, placed_boxes, frames, problems)
+    if problems:
+        raise FlowError(sorted(problems, key=lambda p: p.line or 0))
+
+    return Diagram(width, height, placed_boxes, frames, arrows)
+
+
+Point = tuple[float, float]
+
+
+def _hits_interior(p: Point, q: Point, x: float, y: float, w: float, h: float) -> bool:
+    """線分 p-q が長方形の内側を通るか。辺や角に触れるだけ（EPS 以内）は通らない。"""
+    x0, x1, y0, y1 = x + EPS, x + w - EPS, y + EPS, y + h - EPS
+    if x0 >= x1 or y0 >= y1:
+        return False
+    dx, dy = q[0] - p[0], q[1] - p[1]
+    t0, t1 = 0.0, 1.0
+    for d, lo in ((-dx, p[0] - x0), (dx, x1 - p[0]), (-dy, p[1] - y0), (dy, y1 - p[1])):
+        if d == 0:
+            if lo < 0:
+                return False
+            continue
+        t = lo / d
+        if d < 0:
+            t0 = max(t0, t)
+        else:
+            t1 = min(t1, t)
+        if t0 > t1:
+            return False
+    return True
+
+
+def _label_size(lines: list[str]) -> tuple[float, float]:
+    """矢印のラベルの幅と高さ（D6）。"""
+    w = max(_width_in(line, PT_FLOW_LABEL) for line in lines)
+    return w, text_height_in(len(lines), PT_FLOW_LABEL)
+
+
+def _outer_height(a: ArrowSpec) -> float:
+    """回り込みの通り道の外側に置く、× 印の半分とラベル（文）の高さ。"""
+    h = CROSS_SIZE / 2 if a.cross else 0.0
+    if a.label:
+        h += LABEL_MARGIN + _label_size(a.label)[1]
+    return h
+
+
+def _straight(src: PlacedBox, dst: PlacedBox) -> list[Point]:
+    scx, dcx = src.x + src.w / 2, dst.x + dst.w / 2
+    if abs(scx - dcx) < EPS:  # 同じ列
+        if dst.y > src.y:
+            return [(scx, src.y + src.h), (dcx, dst.y)]
+        return [(scx, src.y), (dcx, dst.y + dst.h)]
+    sy, dy = src.y + src.h / 2, dst.y + dst.h / 2
+    if abs(sy - dy) < EPS:
+        dy = sy
+    if dcx > scx:
+        return [(src.x + src.w, sy), (dst.x, dy)]
+    return [(src.x, sy), (dst.x + dst.w, dy)]
+
+
+def _route_arrows(
+    spec: FlowSpec,
+    boxes: list[PlacedBox],
+    frames: list[PlacedFrame],
+    problems: list[FlowProblem],
+) -> list[PlacedArrow]:
+    by_name = {b.name: b for b in boxes}
+    spec_by_name = {b.name: b for b in spec.boxes}
+    top = min([b.y for b in boxes] + [f.y for f in frames], default=0.0)
+    bottom = max([b.y + b.h for b in boxes] + [f.y + f.h for f in frames], default=0.0)
+    labels = [
+        (f, _width_in(f.label, PT_FLOW_LABEL), text_height_in(1, PT_FLOW_LABEL)) for f in frames
+    ]
+    lanes = {"over": 0, "under": 0}  # 通り道を与えた数
+    outer = {"over": 0.0, "under": 0.0}  # それまでの通り道の外側の高さの合計
+    used: set[tuple[str, str]] = set()  # 回り込みが出入りした（箱、辺）
+    out: list[PlacedArrow] = []
+    for a in spec.arrows:
+        src, dst = by_name[a.src], by_name[a.dst]
+        if a.route == "straight":
+            points = _straight(src, dst)
+        else:
+            over = a.route == "over"
+            if spec_by_name[a.src].col == spec_by_name[a.dst].col:
+                problems.append(
+                    FlowProblem(
+                        a.line_no,
+                        f"同じ列の箱 `{a.src}` と `{a.dst}` の間は回り込めません。"
+                        "回り込みをやめるか、別の列に置いてください",
+                    )
+                )
+                continue
+            side = "上" if over else "下"
+            clash = [n for n in (a.src, a.dst) if (n, side) in used]
+            if clash:
+                problems.append(
+                    FlowProblem(
+                        a.line_no,
+                        f"箱 `{clash[0]}` の{side}辺からは、すでに別の回り込みが出入りしています",
+                    )
+                )
+                continue
+            used.update({(a.src, side), (a.dst, side)})
+            lanes[a.route] += 1
+            offset = (
+                LANE_GAP * lanes[a.route] + outer[a.route] + (CROSS_SIZE / 2 if a.cross else 0.0)
+            )
+            outer[a.route] += _outer_height(a)
+            sx, dx = src.x + src.w / 2, dst.x + dst.w / 2
+            if over:
+                lane = top - offset
+                points = [(sx, src.y), (sx, lane), (dx, lane), (dx, dst.y)]
+            else:
+                lane = bottom + offset
+                points = [
+                    (sx, src.y + src.h),
+                    (sx, lane),
+                    (dx, lane),
+                    (dx, dst.y + dst.h),
+                ]
+        hit = _crossing(points, boxes, labels, {a.src, a.dst})
+        if hit:
+            hint = "。`上回り` か `下回り` を使ってください" if a.route == "straight" else ""
+            problems.append(FlowProblem(a.line_no, f"矢印の経路が {hit} を横切ります{hint}"))
+            continue
+        out.append(PlacedArrow(points, a.emphasis, a.dashed))
+    return out
+
+
+def _crossing(
+    points: list[Point],
+    boxes: list[PlacedBox],
+    labels: list[tuple[PlacedFrame, float, float]],
+    ends: set[str],
+) -> str | None:
+    """経路が横切る、始点と終点以外の箱か枠のラベル。なければ None。"""
+    for p, q in pairwise(points):
+        for b in boxes:
+            if b.name not in ends and _hits_interior(p, q, b.x, b.y, b.w, b.h):
+                return f"箱 `{b.name}`"
+        for f, w, h in labels:
+            if _hits_interior(p, q, f.label_x, f.label_y, w, h):
+                return f"範囲の枠のラベル `{f.label}`"
+    return None
