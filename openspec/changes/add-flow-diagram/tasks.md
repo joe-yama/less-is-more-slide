@@ -88,7 +88,7 @@ Issue: #14
 
 ## 6. 見本・文書・版
 
-- [ ] 6.1 7 つの図の見本の原稿を作る
+- [x] 6.1 7 つの図の見本の原稿を作る
   - Refs: D12、Requirement「構成図の図と注記」「左右 2 列レイアウト」
   - Files: `examples/design-review.md`（新規）、`examples/design-review/*.flow`（新規）、`tests/test_examples.py`
   - Test first: `tests/test_examples.py` が、`examples/design-review.md` が `build.py` で終了コード 0 になること、構成図が 8 つ（図のレイアウトが 6 枚、2 列が 1 枚で左右に 1 つずつ）あること、注記のある図が 2 枚以上あることを確かめて赤になる。`tests/test_compat.py` は緑のまま
