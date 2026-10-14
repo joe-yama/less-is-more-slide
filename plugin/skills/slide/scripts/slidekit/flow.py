@@ -72,6 +72,8 @@ def _cells(s: str) -> list[str]:
 class _Parser:
     def __init__(self) -> None:
         self.problems: list[FlowProblem] = []
+        self.emphasis_lines: list[int] = []
+        self._arrow_common: set[str] | None = None  # 強調の矢印に共通の箱
 
     def add(self, line: int | None, message: str) -> None:
         self.problems.append(FlowProblem(line, message))
@@ -106,7 +108,7 @@ class _Parser:
                         "範囲の枠（`[`）、矢印（` -> `）のどれかで書いてください",
                     )
         columns, boxes = self._placement(placement)
-        spec = FlowSpec(columns, boxes, [], [])
+        spec = FlowSpec(columns, boxes, [], [], self.emphasis_lines)
         by_name = {b.name: b for b in boxes}
         for no, line in others:
             if line.startswith("- "):
@@ -168,6 +170,27 @@ class _Parser:
             r += 1
         return columns, list(boxes.values())
 
+    # --- 強調 ---
+
+    def _count_place(self, no: int) -> bool:
+        """強調 1 か所を数える。2 か所目になったら報告して False。"""
+        self.emphasis_lines.append(no)
+        if len(self.emphasis_lines) >= 2:
+            self.add(no, "強調は構成図ファイルの中で 1 か所までです")
+            return False
+        return True
+
+    def _count_arrow_emphasis(self, no: int, src: str, dst: str) -> None:
+        if self._arrow_common is None:
+            self._arrow_common = {src, dst}
+            self._count_place(no)
+            return
+        common = self._arrow_common & {src, dst}
+        if not common:
+            self.add(no, "`強調` の矢印は、すべてが同じ箱を始点か終点に持つものだけです")
+            return
+        self._arrow_common = common
+
     # --- 箱の中の行 ---
 
     def _box_line(self, no: int, line: str, boxes: dict[str, BoxSpec]) -> None:
@@ -190,6 +213,9 @@ class _Parser:
             self.add(no, f"箱 `{name}` の中の行は {MAX_BOX_LINES} 行までです")
             return
         box.lines.append(inline_runs(text))
+        for _ in range(sum(1 for r in box.lines[-1] if r.emphasis)):
+            if not self._count_place(no):
+                break
 
     # --- 範囲の枠 ---
 
@@ -267,6 +293,8 @@ class _Parser:
             ok = ok and label_ok
         if not ok:
             return
+        if emphasis:
+            self._count_arrow_emphasis(no, src, dst)
         route = "over" if "上回り" in attrs else "under" if "下回り" in attrs else "straight"
         arrows.append(ArrowSpec(src, dst, emphasis, "破線" in attrs, route, label, cross, no))
 

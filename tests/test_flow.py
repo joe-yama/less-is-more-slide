@@ -256,3 +256,60 @@ def test_other_html_tag_in_label_is_rejected():
 
 def test_arrow_line_numbers_are_reported_for_every_violation():
     assert lines_of(TWO + "a -> z\nb -> b\n") == [2, 3]
+
+
+# --- 強調の数え方 ---
+
+THREE = "| 集計基盤 | 取引先 a | 取引先 b | 取引先 c |\n"
+
+
+def test_two_emphasis_arrows_from_same_box_count_once():
+    spec = parse_flow(
+        THREE + "集計基盤 -> 取引先 a (強調)\n集計基盤 -> 取引先 b (強調): ここで社外に渡る\n"
+    )
+    assert spec.emphasis_lines == [2]
+
+
+def test_three_emphasis_arrows_into_same_box_count_once():
+    spec = parse_flow(
+        THREE
+        + "集計基盤 -> 取引先 c (強調)\n取引先 a -> 取引先 c (強調)\n取引先 b -> 取引先 c (強調)\n"
+    )
+    assert spec.emphasis_lines == [2]
+
+
+def test_emphasis_arrows_without_common_box_are_rejected_at_second():
+    text = THREE + "集計基盤 -> 取引先 a (強調)\n取引先 b -> 取引先 c (強調)\n"
+    assert lines_of(text) == [3]
+
+
+def test_emphasis_in_box_line_counts_once_per_asterisk_pair():
+    spec = parse_flow(THREE + "- 集計基盤: **a**\n")
+    assert spec.emphasis_lines == [2]
+
+
+def test_two_emphasis_in_box_lines_are_rejected_at_second():
+    text = THREE + "- 集計基盤: **a**\n- 取引先 a: **b**\n"
+    assert lines_of(text) == [3]
+
+
+def test_two_emphasis_in_one_box_line_are_rejected_at_that_line():
+    assert lines_of(THREE + "- 集計基盤: **a** と **b**\n") == [2]
+
+
+def test_emphasis_arrow_and_box_emphasis_are_rejected_at_second_place():
+    text = THREE + "集計基盤 -> 取引先 a (強調)\n- 取引先 c: **x**\n"
+    assert lines_of(text) == [3]
+    text = THREE + "- 取引先 c: **x**\n集計基盤 -> 取引先 a (強調)\n"
+    assert lines_of(text) == [3]
+
+
+def test_emphasis_arrow_group_continuing_after_box_emphasis_line_is_one_place():
+    text = (
+        THREE
+        + "集計基盤 -> 取引先 a (強調)\n"
+        + "- 取引先 c: **x**\n"
+        + "集計基盤 -> 取引先 b (強調)\n"
+    )
+    # 箱の中の `**` が 2 か所目。3 本目の矢印は最初の組の続きで、新しい場所ではない
+    assert lines_of(text) == [3]
