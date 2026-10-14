@@ -30,6 +30,7 @@ NOTE_GAP = 0.3
 FRAME_LABEL_DX = 0.1
 FRAME_LABEL_DY = 0.05
 FRAME_LABEL_SLACK = 0.2  # 枠のラベルが入る幅は、枠の幅からこれを引いた幅
+CROSS_TEXT_GAP = 0.05  # × の文は × 印の右にこれだけ離す
 EPS = 1e-6
 
 
@@ -230,17 +231,37 @@ def layout_flow(spec: FlowSpec, max_w: float, max_h: float) -> Diagram:
         top_m[c.row0] = max(top_m[c.row0], dt * (FRAME_PAD + FRAME_LABEL_H))
         bottom_m[c.row1] = max(bottom_m[c.row1], db * FRAME_PAD)
 
-    # 3. 列と行の位置
+    # 3. 列と行の位置（ラベルの入る広さまで間隔を広げる: D6）
+    col_need = [0.0] * max(cols - 1, 0)
+    row_need = [0.0] * max(n_rows - 1, 0)
+    for a in spec.arrows:
+        if a.route != "straight" or not a.label:
+            continue
+        s_, d_ = by_name[a.src], by_name[a.dst]
+        lw, lh = _label_size(a.label)
+        if abs(s_.col - d_.col) == 1:
+            same_rows = (s_.row_top, s_.row_bottom) == (d_.row_top, d_.row_bottom)
+            need = lw + 2 * LABEL_MARGIN if same_rows else 2 * (lw + LABEL_MARGIN)
+            c = min(s_.col, d_.col)
+            col_need[c] = max(col_need[c], need)
+        elif s_.col == d_.col:
+            if s_.row_bottom + 1 == d_.row_top:
+                r = s_.row_bottom
+            elif d_.row_bottom + 1 == s_.row_top:
+                r = d_.row_bottom
+            else:
+                continue
+            row_need[r] = max(row_need[r], lh + 2 * LABEL_MARGIN)
     col_x = [0.0] * cols
     x = left_m[0] if cols else 0.0
     for c in range(cols):
         col_x[c] = x
         x += col_w[c]
         if c + 1 < cols:
-            x += right_m[c] + COL_GAP + left_m[c + 1]
+            x += right_m[c] + max(COL_GAP, col_need[c]) + left_m[c + 1]
     width = x + (right_m[cols - 1] if cols else 0.0)
 
-    gaps = [bottom_m[r] + ROW_GAP + top_m[r + 1] for r in range(n_rows - 1)]
+    gaps = [bottom_m[r] + max(ROW_GAP, row_need[r]) + top_m[r + 1] for r in range(n_rows - 1)]
     covered = [False] * n_rows
     for b in spec.boxes:
         for r in range(b.row_top, b.row_bottom + 1):
@@ -304,11 +325,39 @@ def layout_flow(spec: FlowSpec, max_w: float, max_h: float) -> Diagram:
     if problems:
         raise FlowError(sorted(problems, key=lambda p: p.line or 0))
 
-    arrows = _route_arrows(spec, placed_boxes, frames, problems)
+    routed = _route_arrows(spec, placed_boxes, frames, problems)
     if problems:
         raise FlowError(sorted(problems, key=lambda p: p.line or 0))
-
-    return Diagram(width, height, placed_boxes, frames, arrows)
+    col_ranges = [
+        (col_x[c] + col_w[c] + right_m[c], col_x[c + 1] - left_m[c + 1]) for c in range(cols - 1)
+    ]
+    row_ranges = [
+        (row_y[r] + row_h[r] + bottom_m[r], row_y[r + 1] - top_m[r + 1]) for r in range(n_rows - 1)
+    ]
+    labels, crosses = _place_labels(
+        spec, placed_boxes, frames, routed, col_ranges, row_ranges, problems
+    )
+    if problems:
+        raise FlowError(sorted(problems, key=lambda p: p.line or 0))
+    diagram = Diagram(
+        width, height, placed_boxes, frames, [pa for _, pa in routed], labels, crosses
+    )
+    _normalize(diagram)
+    if diagram.width > max_w + EPS:
+        problems.append(
+            FlowProblem(
+                None, f"図の幅 {diagram.width:.2f} インチが、置ける幅 {max_w} インチを超えます"
+            )
+        )
+    if diagram.height > max_h + EPS:
+        problems.append(
+            FlowProblem(
+                None, f"図の高さ {diagram.height:.2f} インチが、置ける高さ {max_h} インチを超えます"
+            )
+        )
+    if problems:
+        raise FlowError(problems)
+    return diagram
 
 
 Point = tuple[float, float]
@@ -369,7 +418,7 @@ def _route_arrows(
     boxes: list[PlacedBox],
     frames: list[PlacedFrame],
     problems: list[FlowProblem],
-) -> list[PlacedArrow]:
+) -> list[tuple[ArrowSpec, PlacedArrow]]:
     by_name = {b.name: b for b in boxes}
     spec_by_name = {b.name: b for b in spec.boxes}
     top = min([b.y for b in boxes] + [f.y for f in frames], default=0.0)
@@ -380,7 +429,7 @@ def _route_arrows(
     lanes = {"over": 0, "under": 0}  # 通り道を与えた数
     outer = {"over": 0.0, "under": 0.0}  # それまでの通り道の外側の高さの合計
     used: set[tuple[str, str]] = set()  # 回り込みが出入りした（箱、辺）
-    out: list[PlacedArrow] = []
+    out: list[tuple[ArrowSpec, PlacedArrow]] = []
     for a in spec.arrows:
         src, dst = by_name[a.src], by_name[a.dst]
         if a.route == "straight":
@@ -429,7 +478,7 @@ def _route_arrows(
             hint = "。`上回り` か `下回り` を使ってください" if a.route == "straight" else ""
             problems.append(FlowProblem(a.line_no, f"矢印の経路が {hit} を横切ります{hint}"))
             continue
-        out.append(PlacedArrow(points, a.emphasis, a.dashed))
+        out.append((a, PlacedArrow(points, a.emphasis, a.dashed)))
     return out
 
 
@@ -448,3 +497,170 @@ def _crossing(
             if _hits_interior(p, q, f.label_x, f.label_y, w, h):
                 return f"範囲の枠のラベル `{f.label}`"
     return None
+
+
+def _rects_overlap(
+    a: tuple[float, float, float, float], b: tuple[float, float, float, float]
+) -> bool:
+    return (
+        a[0] < b[0] + b[2] - EPS
+        and b[0] < a[0] + a[2] - EPS
+        and a[1] < b[1] + b[3] - EPS
+        and b[1] < a[1] + a[3] - EPS
+    )
+
+
+def _frame_edges(f: PlacedFrame) -> list[tuple[Point, Point]]:
+    x0, y0, x1, y1 = f.x, f.y, f.x + f.w, f.y + f.h
+    return [((x0, y0), (x1, y0)), ((x1, y0), (x1, y1)), ((x1, y1), (x0, y1)), ((x0, y1), (x0, y0))]
+
+
+def _reference_point(
+    a: ArrowSpec,
+    pa: PlacedArrow,
+    spec_boxes: dict[str, BoxSpec],
+    col_ranges: list[tuple[float, float]],
+    row_ranges: list[tuple[float, float]],
+) -> Point:
+    """ラベルと × 印を置く基準点（D6）。"""
+    pts = pa.points
+    if a.route != "straight":
+        return ((pts[1][0] + pts[2][0]) / 2, pts[1][1])
+    p, q = pts
+    s_, d_ = spec_boxes[a.src], spec_boxes[a.dst]
+    mid = ((p[0] + q[0]) / 2, (p[1] + q[1]) / 2)
+    if s_.col == d_.col:
+        if s_.row_bottom + 1 == d_.row_top:
+            r = s_.row_bottom
+        elif d_.row_bottom + 1 == s_.row_top:
+            r = d_.row_bottom
+        else:
+            return mid
+        y0, y1 = row_ranges[r]
+        return (p[0], (y0 + y1) / 2)
+    if abs(s_.col - d_.col) == 1:
+        x0, x1 = col_ranges[min(s_.col, d_.col)]
+        xm = (x0 + x1) / 2
+        return (xm, p[1] + (q[1] - p[1]) * (xm - p[0]) / (q[0] - p[0]))
+    return mid
+
+
+def _place_labels(
+    spec: FlowSpec,
+    boxes: list[PlacedBox],
+    frames: list[PlacedFrame],
+    routed: list[tuple[ArrowSpec, PlacedArrow]],
+    col_ranges: list[tuple[float, float]],
+    row_ranges: list[tuple[float, float]],
+    problems: list[FlowProblem],
+) -> tuple[list[PlacedLabel], list[PlacedCross]]:
+    """ラベル・× 印・× の文を書いた順に置く（D6・D7）。"""
+    spec_boxes = {b.name: b for b in spec.boxes}
+    rects = [(b.x, b.y, b.w, b.h) for b in boxes]
+    for f in frames:
+        rects.append(
+            (
+                f.label_x,
+                f.label_y,
+                _width_in(f.label, PT_FLOW_LABEL),
+                text_height_in(1, PT_FLOW_LABEL),
+            )
+        )
+    edges = [e for f in frames for e in _frame_edges(f)]
+    lines = [
+        [(pa.points[i], pa.points[i + 1]) for i in range(len(pa.points) - 1)] for _, pa in routed
+    ]
+    placed: list[tuple[float, float, float, float]] = []
+    labels: list[PlacedLabel] = []
+    crosses: list[PlacedCross] = []
+
+    def free(rect: tuple[float, float, float, float], skip_line: int | None) -> bool:
+        if any(_rects_overlap(rect, r) for r in rects + placed):
+            return False
+        x, y, w, h = rect
+        for p, q in edges:
+            if _hits_interior(p, q, x, y, w, h):
+                return False
+        for i, segs in enumerate(lines):
+            if i == skip_line:
+                continue
+            if any(_hits_interior(p, q, x, y, w, h) for p, q in segs):
+                return False
+        return True
+
+    for i, (a, pa) in enumerate(routed):
+        if not a.label:
+            continue
+        w, h = _label_size(a.label)
+        ref = _reference_point(a, pa, spec_boxes, col_ranges, row_ranges)
+        rx, ry = ref
+        kind = a.route
+        if kind == "straight":
+            p, q = pa.points
+            if abs(p[1] - q[1]) < EPS:
+                kind = "horizontal"
+            elif abs(p[0] - q[0]) < EPS:
+                kind = "vertical"
+            else:
+                kind = "descending" if (q[0] - p[0]) * (q[1] - p[1]) > 0 else "ascending"
+        if a.cross:
+            c = (rx - CROSS_SIZE / 2, ry - CROSS_SIZE / 2, CROSS_SIZE, CROSS_SIZE)
+            if not free(c, i):
+                problems.append(FlowProblem(a.line_no, "× 印を置ける場所がありません"))
+                continue
+            placed.append(c)
+            crosses.append(PlacedCross(*c))
+            tx = rx + CROSS_SIZE / 2 + CROSS_TEXT_GAP
+            if kind == "over":
+                cands = [(tx, ry - LABEL_MARGIN - h, w, h)]
+            elif kind == "vertical":
+                cands = [(tx, ry - h / 2, w, h)]
+            elif kind == "ascending" or kind == "descending":
+                cands = [(tx, ry + LABEL_MARGIN, w, h), (tx, ry - LABEL_MARGIN - h, w, h)]
+            else:
+                cands = [(tx, ry + LABEL_MARGIN, w, h)]
+        elif kind == "horizontal":
+            cands = [(rx - w / 2, ry + LABEL_MARGIN, w, h)]
+        elif kind == "vertical":
+            cands = [(rx + LABEL_MARGIN, ry - h / 2, w, h)]
+        elif kind == "descending":
+            cands = [(rx - w, ry + LABEL_MARGIN, w, h), (rx, ry - LABEL_MARGIN - h, w, h)]
+        elif kind == "ascending":
+            cands = [(rx, ry + LABEL_MARGIN, w, h), (rx - w, ry - LABEL_MARGIN - h, w, h)]
+        elif kind == "over":
+            cands = [(rx - w / 2, ry - LABEL_MARGIN - h, w, h)]
+        else:
+            cands = [(rx - w / 2, ry + LABEL_MARGIN, w, h)]
+        for cand in cands:
+            if free(cand, None):
+                placed.append(cand)
+                labels.append(PlacedLabel(*cand, a.label, a.emphasis))
+                break
+        else:
+            what = "× の文" if a.cross else "ラベル"
+            problems.append(FlowProblem(a.line_no, f"{what}を置ける場所がありません"))
+    return labels, crosses
+
+
+def _normalize(d: Diagram) -> None:
+    """すべての要素を囲む長方形の左上を原点に移し、幅と高さを決める。"""
+    xs: list[float] = []
+    ys: list[float] = []
+    for r in [*d.boxes, *d.frames, *d.labels, *d.crosses]:
+        xs += [r.x, r.x + r.w]
+        ys += [r.y, r.y + r.h]
+    for a in d.arrows:
+        xs += [p[0] for p in a.points]
+        ys += [p[1] for p in a.points]
+    if not xs:
+        return
+    x0, y0 = min(xs), min(ys)
+    d.width, d.height = max(xs) - x0, max(ys) - y0
+    for r in [*d.boxes, *d.frames, *d.labels, *d.crosses]:
+        r.x -= x0
+        r.y -= y0
+    for f in d.frames:
+        f.label_x -= x0
+        f.label_y -= y0
+    for a in d.arrows:
+        a.points = [(x - x0, y - y0) for x, y in a.points]
