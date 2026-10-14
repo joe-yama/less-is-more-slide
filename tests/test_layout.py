@@ -463,3 +463,13 @@ def test_design_dialogue_figures_fit_the_full_width(text):
 def test_design_dialogue_comparison_figures_fit_a_column(text):
     d = lay(text, max_w=5.5, max_h=4.9)
     assert d.width <= 5.5 and d.height <= 4.9
+
+
+def test_cross_on_a_straight_horizontal_arrow_widens_the_gap_and_fits():
+    d = lay("| A | B |\nA -> B (強調): × 使わない\n")
+    a, b = box(d, "A"), box(d, "B")
+    x, t = d.crosses[0], d.labels[0]
+    mid = (a.x + a.w + b.x) / 2
+    assert close(x.x + x.w / 2, mid) and close(x.y + x.h / 2, cy(a))
+    assert t.x >= x.x + x.w - EPS  # 文は × 印の右
+    assert t.x + t.w <= b.x + EPS  # 終点の箱に掛からない

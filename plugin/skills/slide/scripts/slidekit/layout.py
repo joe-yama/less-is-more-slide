@@ -242,6 +242,9 @@ def layout_flow(spec: FlowSpec, max_w: float, max_h: float) -> Diagram:
         if abs(s_.col - d_.col) == 1:
             same_rows = (s_.row_top, s_.row_bottom) == (d_.row_top, d_.row_bottom)
             need = lw + 2 * LABEL_MARGIN if same_rows else 2 * (lw + LABEL_MARGIN)
+            if a.cross and same_rows:
+                # × 印は線の中点にあり、文はその右に置く。文は中点の片側に寄るので 2 倍取る
+                need = 2 * (CROSS_SIZE / 2 + CROSS_TEXT_GAP + lw + LABEL_MARGIN)
             c = min(s_.col, d_.col)
             col_need[c] = max(col_need[c], need)
         elif s_.col == d_.col:
