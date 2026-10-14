@@ -71,7 +71,7 @@ Issue: #15
   - Test first: `tests/test_examples.py` が次を確かめて赤になる。`examples/design-review.md` が `build.py` で終了コード 0 になること。補足のある一言、`pt == 16` で `emphasis_col` のある表、`Section` を 1 つずつ含むこと。`Section` の後にスライドがあること
   - Review: batch B / Risk: ui
 
-- [ ] 4.2 Skill の文書を 7 種のレイアウトと、改行・補足・列の強調に直す
+- [x] 4.2 Skill の文書を 7 種のレイアウトと、改行・補足・列の強調に直す
   - Refs: Requirement「Skill の内容」、D8
   - Files: `plugin/skills/slide/references/format.md`、`plugin/skills/slide/SKILL.md`、`plugin/skills/slide/references/writing.md`、`tests/test_skill_docs.py`
   - Test first: `tests/test_skill_docs.py` が次を確かめて赤になる。`SKILL.md` と `format.md` の原稿の例から、7 種（`Section` を含む）のスライドがすべてできること（`SIX` を 7 種に）。`format.md` の原稿の例に、補足のある一言、`<br>`、列の強調があり、生成できること（既存の生成のテスト）。`writing.md` に `<br>` の入れ方の規則があること（鍵となる語で確かめ、文言は写さない）
