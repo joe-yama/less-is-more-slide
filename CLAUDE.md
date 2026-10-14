@@ -8,7 +8,7 @@ The `harness@agentic-harness` plugin supplies the hooks, subagents and skills be
 
 | Situation | Use |
 |---|---|
-| Starting, resuming or finishing a change; unsure whether to stop | `harness:workflow` |
+| Starting, resuming or finishing a change | `harness:workflow` |
 | New idea or behavior change (design session, writes the whole change) | `harness:design` |
 | Proposal, archive | `/opsx:propose`, `/opsx:archive` (call OpenSpec through `/opsx:*`) |
 | Implementing a change's `tasks.md`, including its reviews | `harness:execute` |
@@ -17,7 +17,7 @@ The `harness@agentic-harness` plugin supplies the hooks, subagents and skills be
 
 ## Subagents
 
-- Dispatch only `harness:implementer` and `harness:reviewer`, and always pass `model` per the role table in `docs/harness/models.md`. An omitted model inherits the session's.
+- Dispatch only `harness:implementer`, `harness:reviewer-intermediate` and `harness:reviewer` (final review); always pass `model` per the role table in `docs/harness/models.md`.
 - The context that implemented something never reviews it. During `harness:execute` the controller distributes, judges and records; it does not write code.
 - Agent definition changes take effect only in a new session. The symptom of a stale definition is `No such tool available`.
 

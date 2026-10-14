@@ -13,16 +13,17 @@ This repository is built with a harness in which a human **PO** steers and a cod
 
 ## How work flows
 
-Every change goes: idea (1-4 sentences from the PO) → design (`harness:design`) approved by the PO → OpenSpec proposal (`openspec/changes/<name>/`) plus one GitHub Issue → implementation of `tasks.md`, which is the plan (`harness:execute`: test-first implementation by a subagent, adversarial review by a separate subagent) → PR → PO acceptance → archive → `docs/status.md` updated. Small changes (docs, config or styles only, or at most 5 files without a new spec requirement) skip the design step but still get an Issue.
+Every change goes: idea (1-4 sentences from the PO) → design (`harness:design`) approved by the PO → OpenSpec proposal (`openspec/changes/<name>/`) plus one GitHub Issue → implementation of `tasks.md`, which is the plan (`harness:execute`: test-first implementation by a subagent, adversarial review by a separate subagent) → PR → PO acceptance → archive commit in the same PR (specs synced, `docs/status.md` updated) → merge. Small changes (docs, config or styles only, or at most 5 files without a new spec requirement) skip the design step but still get an Issue.
 
 ## Stop and ask only for
 
-1. destructive or irreversible operations;
-2. security (secrets, credentials, permissions);
-3. side effects outside the working copy: pushing to `main`, publishing, releases, merging;
-4. a plan defect where every way forward is a guess.
+1. destructive or irreversible operations: deleting data or branches, rewriting pushed history, discarding uncommitted work;
+2. security: secrets, credentials, permissions, anything that widens access;
+3. adding or changing a dependency, lockfile-changing installs included;
+4. side effects outside the working copy: pushing to `main`, publishing, releases, merging, creating repositories; any `gh` write while `gh api user --jq .login` does not print `joe-yama` (check before every `gh` write);
+5. a plan defect where every way forward is a guess (the spec contradicts itself on the core behavior).
 
-For anything else during implementation, decide by the spec, record `Ruling / Reason / Cost if wrong` in the ledger and the Issue, and continue. The PO can overturn it.
+For anything else during implementation, decide by the spec, record a ruling in the change's `design.md` (format: `harness:workflow`; the Issue links it), and continue. The PO can overturn it.
 
 ## Definition of done
 
@@ -45,15 +46,14 @@ Write commits, Issues, PRs, OpenSpec artifacts and status docs in Japanese. Comm
 ## Pitfalls
 
 - `main` is PR-only with the required status check `check` (the CI job name). Renaming that job blocks every merge until the ruleset is updated.
-- Before any `gh` write (issue, PR, release), confirm `gh api user --jq .login` prints `joe-yama`. If not, stop and ask the PO to switch accounts.
-- Local green is not done: defects that only CI, real data or real processes show are common. Record them in `docs/harness/lessons.md`.
-- A test written to guard a behavior must be shown to fail when that behavior is broken (mutation check) before it counts.
+- Defects that only CI, real data or real processes show are common. Record them in `docs/harness/lessons.md`.
 
 ## Index
 
 | When | Read |
 |---|---|
 | Where things stand, what is next, PO to-dos | `docs/status.md` |
-| Past changes and rulings | `docs/changes.md` |
+| Past changes and rulings | `openspec/changes/archive/` (grep it) |
 | Current specs / changes in progress | `openspec/specs/`, `openspec/changes/` |
+| Writing or reviewing tests | `docs/harness/testing.md` |
 | Tests or CI failed in an unexpected way | `docs/harness/lessons.md` |
