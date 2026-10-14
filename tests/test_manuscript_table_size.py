@@ -115,3 +115,40 @@ def test_row_with_wrong_column_count_is_reported_once():
     text = table(["観点", "A", "B", "C"], ["x", cell(22, 3, 2), "2"])
     got = problems(text)
     assert [m for _, m in got].count("行の列数 3 が見出し行の 4 と違います") == 1
+
+
+# --- 列の強調（delta spec「表の列の強調」、design D7） ---
+
+
+def test_whole_cell_emphasis_in_header_sets_emphasis_col():
+    text = (
+        PREFIX + "| 観点 | A 案 | B 案 | **C 案** |\n|---|---|---|---|\n| 費用 | 高 | 中 | 低 |\n"
+    )
+    (slide,) = deck(text)[1:]
+    assert isinstance(slide, Table)
+    assert slide.emphasis_col == 3
+
+
+def test_table_without_emphasis_has_no_emphasis_col():
+    text = PREFIX + "| 観点 | A 案 | B 案 |\n|---|---|---|\n| 費用 | 高 | 中 |\n"
+    (slide,) = deck(text)[1:]
+    assert slide.emphasis_col is None
+
+
+def test_partial_emphasis_in_header_cell_is_rejected_with_reason():
+    text = PREFIX + "| 観点 | **C** 案 |\n|---|---|\n| 費用 | 低 |\n"
+    found = problems(text)
+    assert [line for line, _ in found] == [4]
+    assert "セルの文字全体" in found[0][1]
+
+
+def test_body_emphasis_with_column_emphasis_is_rejected_at_body_row():
+    text = PREFIX + "| 観点 | **C 案** |\n|---|---|\n| 費用 | **低** |\n"
+    assert [line for line, _ in problems(text)] == [6]
+
+
+def test_two_header_emphases_are_rejected_at_the_second():
+    text = PREFIX + "| 観点 | **B 案** | **C 案** |\n|---|---|---|\n| 費用 | 中 | 低 |\n"
+    found = problems(text)
+    assert [line for line, _ in found] == [4]
+    assert "1 か所" in found[0][1]

@@ -97,6 +97,7 @@ class Table:
     header_glosses: list[str | None] = field(default_factory=list)
     row_glosses: list[list[str | None]] = field(default_factory=list)
     pt: int = PT_CELL
+    emphasis_col: int | None = None  # 強調した列の番号（0 始まり）
 
 
 @dataclass(frozen=True)
@@ -834,6 +835,7 @@ class _Parser:
         header = [self._breaks(head.no, c) for c in self._cells(head.s)]
         n = len(header)
         cell_width = BODY_WIDTH / n - 0.2
+        emphasis_col = self._emphasis_col(head.no, header)
         # 大きさごとの判定に渡す、行（原稿の行、セルの文字、セルの添え訳）。見出し行が先頭。
         sized: list[tuple[_Line, list[str], list[str | None]]] = [
             (head, header, self._cell_glosses(head, n))
@@ -888,7 +890,21 @@ class _Parser:
             header_glosses=sized[0][2],
             row_glosses=row_glosses,
             pt=pt,
+            emphasis_col=emphasis_col,
         )
+
+    def _emphasis_col(self, no: int, header: list[str]) -> int | None:
+        """見出しのセルの文字全体が `**…**` の列（最初の 1 つ）。一部だけの強調は拒否する。"""
+        found: int | None = None
+        for i, c in enumerate(header):
+            r = _runs(c)
+            if not any(run.emphasis for run in r):
+                continue
+            if len(r) == 1:
+                found = i if found is None else found
+            else:
+                self.add(no, "列の強調は、見出しのセルの文字全体を `**` で囲みます")
+        return found
 
     # --- 左右 2 列 ---
 

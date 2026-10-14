@@ -42,7 +42,7 @@ Issue: #15
   - Test first: 次を確かめて赤になる（セルの行数は `fit.line_count` で数えて原稿を作る）。18pt で収まる表は `pt == 18`。18pt で 3 行のセルがあり 16pt で 2 行になる 4 列の表は `pt == 16`。18pt で高さを超え 16pt で収まる表は `pt == 16`。16pt でも 3 行のセルの表は、そのセルの行の行番号と「16pt」を含む理由で拒否され、18pt の理由は出ないこと。16pt の表のセルの添え訳が 10pt で行数を判定されること。列の数の違いなど、大きさによらない違反が 1 回だけ出ること
   - Review: batch A / Risk: none
 
-- [ ] 2.5 表の列の強調を解析する
+- [x] 2.5 表の列の強調を解析する
   - Refs: Requirement「表の列の強調」、D2、D7
   - Files: `slidekit/manuscript.py`、`tests/test_manuscript_table_size.py`
   - Interface: `Table.emphasis_col`
