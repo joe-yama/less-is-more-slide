@@ -13,7 +13,7 @@ from slidekit.render import image_long_side, render
 
 FIXTURES = Path(__file__).parent / "fixtures"
 FONT = "メイリオ"
-COLORS = {"FFFFFF", "1A1A1A", "6B6B6B", "B23A2E", "767676"}
+COLORS = {"FFFFFF", "1A1A1A", "6B6B6B", "B23A2E", "767676", "BDBDBD"}
 NS = {
     "a": "http://schemas.openxmlformats.org/drawingml/2006/main",
     "p": "http://schemas.openxmlformats.org/presentationml/2006/main",
@@ -84,7 +84,7 @@ def all_paragraph_texts(slide) -> list[str]:
 # --- 配色と書体 ---
 
 
-def test_colors_are_only_the_five(pptx_path):
+def test_colors_are_only_the_six(pptx_path):
     used = set()
     for xml in slide_xmls(pptx_path):
         assert "schemeClr" not in xml and "sysClr" not in xml and "prstClr" not in xml
