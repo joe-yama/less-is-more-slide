@@ -473,3 +473,11 @@ def test_cross_on_a_straight_horizontal_arrow_widens_the_gap_and_fits():
     assert close(x.x + x.w / 2, mid) and close(x.y + x.h / 2, cy(a))
     assert t.x >= x.x + x.w - EPS  # 文は × 印の右
     assert t.x + t.w <= b.x + EPS  # 終点の箱に掛からない
+
+
+def test_cross_on_a_horizontal_arrow_from_a_row_spanning_box_fits():
+    d = lay("| A | X |\n| A | B |\n| A | Y |\nA -> B (強調): × 使わない\n")
+    b = box(d, "B")
+    x, t = d.crosses[0], d.labels[0]
+    assert close(x.y + x.h / 2, cy(b))
+    assert t.x >= x.x + x.w - EPS and t.x + t.w <= b.x + EPS
