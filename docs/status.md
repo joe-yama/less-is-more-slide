@@ -23,7 +23,7 @@ This file holds the current state only, no history: replace lines, do not append
 
 - add-slide-plugin の受け入れ: README の手順で、Claude Code と Copilot CLI の両方にマーケットプレイスからプラグインを入れる。`examples/sample.md` から作った PPTX を PowerPoint で開き、はみ出しがないか、「人が作った」ように見えるか、アイコン（cloud・people・gear）を描き直すかを判断する。
 - add-gloss の受け入れ（PR #10 の本文に手順）: `examples/bilingual.md` から作った PPTX を PowerPoint で開き、見出しと添え訳が重ならないか、添え訳の灰色が投影で読めるか、表の 11pt が投影で読めるかを見る。添え訳のない `examples/sample.md` の見た目が変わらないことも確かめる。
-- Copilot CLI を 1.0.91 以上に更新し、対話モードでこのリポジトリを信頼して `harness` プラグインを導入する（`.github/copilot/settings.json` 経由）。`copilot plugin list` で `harness` を確かめ、`harness:adopt` の手順 8 の Copilot CLI の検証を行う。
+- Copilot CLI の対話モードで `harness:adopt` の手順 8 の検証を行う（プラグイン v0.5.0 は導入済み。手で登録したマーケットプレイスは版を固定していない）。
 ## Next candidates
 
 1. 受け入れで見つかった問題の修正。
@@ -39,19 +39,21 @@ This file holds the current state only, no history: replace lines, do not append
 |---|---|
 | agentic-harness | v0.5.0 |
 | OpenSpec CLI / skills | 1.14.1（`/opsx:propose`・`archive`・`update`・`sync`、`.agents/skills` に同じ 4 つ） |
-| Claude Code | 2.1.295 |
-| Copilot CLI | 1.0.90（`harness` プラグインは未導入） |
+| Claude Code | 2.1.299 |
+| Copilot CLI | 1.0.94（`harness@agentic-harness` v0.5.0。マーケットプレイスは手で登録したもので、版を固定していない） |
 
-### 検証結果（`harness:adopt` 手順 8、2026-10-09）
+### 検証結果（`harness:adopt` 手順 8、2026-10-14、v0.5.0）
 
 | 項目 | 結果 |
 |---|---|
-| `rm -rf ./harness-guard-probe` | 拒否された: `BLOCKED by harness guard (rm-rf)` |
-| `git push origin main` | PO への確認が出た（`harness ask-gate (protected-push)`）。PO が誤って承認したが、`main` は `origin/main` と同一で、結果は `Everything up-to-date`（送られた変更はない） |
-| `/plugin` | `harness@agentic-harness` 0.4.0（project スコープ）が有効 |
-| スキル | `harness:design`・`harness:execute` ほか 5 つが表示される。`openspec-*` のスキルはない |
+| `rm -rf ./harness-guard-probe` | 拒否された: `BLOCKED by harness guard (rm-rf)`（0.5.0 の `guard.sh`） |
+| `git push origin main` | 確認が出て、PO が拒否した |
+| プラグイン | `harness@agentic-harness` 0.5.0（project スコープ）が有効 |
+| スキル | `adopt`・`design`・`execute`・`mutation-check`・`workflow` の 5 つ。`.claude/skills` はない（`openspec-*` のスキルはない） |
 | `.claude/commands/opsx/` | `propose.md`・`archive.md`・`update.md`・`sync.md` のみ |
-| エージェント | `harness:implementer`・`harness:reviewer` |
-| `.claude/settings.json` | プラグインの導入後も差分なし |
+| エージェント | `harness:implementer`・`harness:reviewer-intermediate`・`harness:reviewer` |
+| `.claude/settings.json` | プラグインの更新後も差分なし |
 | ruleset | `default-branch` |
-| Copilot CLI | 未検証（プラグイン未導入） |
+| Copilot CLI | `copilot plugin list` で v0.5.0 を確認。対話モードでの検証は未実施 |
+
+更新の注意: `claude plugin update` の前に、ユーザー側に登録されたマーケットプレイスの ref を新しいタグに付け替える（`claude plugin marketplace add 'joe-yama/agentic-harness@<tag>'`）。プロジェクトの `.claude/settings.json` の ref を変えるだけでは、登録済みのものは古いタグのまま。
