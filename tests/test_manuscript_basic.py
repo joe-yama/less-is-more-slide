@@ -53,8 +53,9 @@ def test_second_h1_in_cover_slide_is_rejected():
     assert lines_of("# 題\n# 別の題\n") == [2]
 
 
-def test_h1_outside_the_cover_is_rejected():
-    assert lines_of("# 題\n---\n# 二枚目\n") == [3]
+def test_h1_mixed_with_other_lines_outside_the_cover_is_rejected():
+    # `# ` だけの 1 行なら中扉。ほかの行と混ざると `# ` の行で拒否する（D9）
+    assert lines_of("# 題\n---\n# 二枚目\n## 見出し\n- a\n") == [3]
 
 
 def test_blank_lines_are_ignored_and_slides_split_on_separator():

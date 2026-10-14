@@ -45,6 +45,12 @@ class Cover:
 
 
 @dataclass(frozen=True)
+class Section:
+    title: str
+    title_gloss: str | None = None
+
+
+@dataclass(frozen=True)
 class Statement:
     text: Text
     gloss: str | None = None
@@ -128,7 +134,7 @@ class TwoColumn:
     heading_gloss: str | None = None
 
 
-Slide = Cover | Statement | Bullets | Figure | DiagramFigure | Table | TwoColumn
+Slide = Cover | Section | Statement | Bullets | Figure | DiagramFigure | Table | TwoColumn
 
 
 @dataclass(frozen=True)
@@ -201,6 +207,10 @@ def _flow_message(ref: str, p: FlowProblem) -> str:
     if p.line is None:
         return f"構成図ファイル {ref}: {p.message}"
     return f"構成図ファイル {ref} の {p.line} 行目: {p.message}"
+
+
+def _is_h1(ln: "_Line") -> bool:
+    return ln.s == "#" or ln.s.startswith("# ")
 
 
 def _is_flow(ref: str) -> bool:
@@ -508,14 +518,14 @@ class _Parser:
 
     def _slide(self, lines: list[_Line]) -> Slide | None:
         tainted = self._check_lines(lines)
-        body_lines: list[_Line] = []
-        for ln in lines:
-            if ln.s.startswith("# "):
-                self.add(ln.no, "`# ` の見出しは表紙のタイトルにだけ使えます。見出しは `## ` です")
-            else:
-                body_lines.append(ln)
-        if not body_lines:
+        h1 = [ln for ln in lines if _is_h1(ln)]
+        if h1:
+            if len(lines) == 1:
+                return self._section(lines[0])
+            for ln in h1:
+                self.add(ln.no, "中扉は `# タイトル` の 1 行だけです。見出しは `## ` です")
             return None
+        body_lines = lines
         if tainted:
             return None
 
@@ -536,6 +546,13 @@ class _Parser:
         if result is not None and heading_gloss is not None:
             result = replace(result, heading_gloss=heading_gloss)
         return result
+
+    def _section(self, ln: _Line) -> Section:
+        title = ln.s[1:].strip()
+        self.fit(ln.no, title, "中扉のタイトル", PT_COVER_TITLE, BODY_WIDTH, 2)
+        if not title:
+            self.add(ln.no, "中扉のタイトルが空です")
+        return Section(title, self._gloss(ln, PT_COVER_TITLE, BODY_WIDTH)[0])
 
     def _statement(self, lines: list[_Line]) -> Statement | None:
         first = lines[0]

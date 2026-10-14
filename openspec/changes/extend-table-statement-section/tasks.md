@@ -28,7 +28,7 @@ Issue: #15
   - Test first: 次を確かめて赤になる。一言と補足 1 行・2 行が `notes` に入り、強調が `Run` になること。補足 3 行で 3 つ目の補足の行の拒否（`test_statement_with_two_lines_and_no_heading_is_rejected` を、この条件に書き換える。D9）。24pt で 3 行になる補足の拒否。補足の添え訳が `note_glosses` に入り、14pt で 3 行のものが拒否されること。一言 3 行・補足 2 行ずつ・すべてに 2 行の添え訳で、`STATEMENT_BOX_H` を最初に超えた段落の行の拒否。補足に箇条書きの行を書いたときの拒否
   - Review: batch A / Risk: none
 
-- [ ] 2.3 中扉を解析する
+- [x] 2.3 中扉を解析する
   - Refs: Requirement「中扉レイアウト」「原稿の区切りと表紙」「添え訳の書式」、D2、D5、D9
   - Files: `slidekit/manuscript.py`、`tests/test_manuscript_section.py`（新規）、`tests/test_manuscript_basic.py`
   - Interface: `manuscript.Section(title: str, title_gloss: str | None = None)`
