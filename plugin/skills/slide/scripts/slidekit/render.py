@@ -9,7 +9,7 @@ from pathlib import Path
 from lxml import etree
 from pptx import Presentation
 from pptx.dml.color import RGBColor
-from pptx.enum.shapes import MSO_SHAPE
+from pptx.enum.shapes import MSO_CONNECTOR, MSO_SHAPE
 from pptx.enum.text import MSO_ANCHOR, MSO_AUTO_SIZE, PP_ALIGN
 from pptx.opc.constants import RELATIONSHIP_TYPE as RT
 from pptx.oxml import parse_xml
@@ -29,6 +29,7 @@ from slidekit.fit import (
     PT_COLUMN_TEXT,
     PT_COVER_LINE,
     PT_COVER_TITLE,
+    PT_CROSS,
     PT_FLOW_LABEL,
     PT_FLOW_NOTE,
     PT_HEADING,
@@ -39,7 +40,16 @@ from slidekit.fit import (
     line_count,
     text_height_in,
 )
-from slidekit.layout import BOX_PAD_X, BOX_PAD_Y, NOTE_GAP, Diagram
+from slidekit.layout import (
+    BOX_PAD_X,
+    BOX_PAD_Y,
+    CROSS_SIZE,
+    CROSS_TEXT_GAP,
+    NOTE_GAP,
+    Diagram,
+    PlacedArrow,
+    PlacedLabel,
+)
 from slidekit.manuscript import (
     Block,
     Bullets,
@@ -83,6 +93,9 @@ IMAGE_TARGET = 2.4
 DOT_MIN, DOT_MAX = 0.05, 0.075  # 1 ドットの寸法（インチ）の下限と上限
 BOX_LINE_PT = 1.25  # 構成図の線の太さ（pt）
 FRAME_LINE_PT = 1
+ARROW_LINE_PT = 1.5
+ARROW_EMPHASIS_PT = 2
+_CROSS_EPS = 1e-6
 NOTE_LINES = 3
 
 
@@ -297,6 +310,35 @@ def _flow_text(group, name: str, x, y, w, h, lines: list[tuple[str, float, str]]
         _fill_paragraph(p, (Run(text),), pt, color)
 
 
+def _arrow(group, a: PlacedArrow, x: float, y: float) -> None:
+    pts = [(int(Inches(x + px)), int(Inches(y + py))) for px, py in a.points]
+    if len(pts) == 2:
+        shape = group.shapes.add_connector(MSO_CONNECTOR.STRAIGHT, *pts[0], *pts[1])
+    else:
+        builder = group.shapes.build_freeform(*pts[0], scale=1.0)
+        builder.add_line_segments(pts[1:], close=False)
+        shape = builder.convert_to_shape()
+        shape.fill.background()
+    shape.name = "矢印"
+    _bare(shape)
+    shape.line.width = Pt(ARROW_EMPHASIS_PT if a.emphasis else ARROW_LINE_PT)
+    shape.line.color.rgb = _rgb(ACCENT if a.emphasis else INK)
+    ln = shape._element.xpath("./p:spPr/a:ln")[0]
+    if a.dashed:
+        ln.append(parse_xml(f'<a:prstDash xmlns:a="{_NS_A}" val="dash"/>'))
+    ln.append(parse_xml(f'<a:tailEnd xmlns:a="{_NS_A}" type="triangle"/>'))
+
+
+def _is_cross_text(lb: PlacedLabel, d: Diagram) -> bool:
+    """× の文は、× 印の右 CROSS_TEXT_GAP に、× 印と上下が重なる位置に置かれている。"""
+    return any(
+        abs(lb.x - (c.x + CROSS_SIZE + CROSS_TEXT_GAP)) < _CROSS_EPS
+        and lb.y < c.y + c.h
+        and lb.y + lb.h > c.y
+        for c in d.crosses
+    )
+
+
 def _diagram(slide, d: Diagram, alt: str, x: float, y: float) -> None:
     group = slide.shapes.add_group_shape()
     group.name = "構成図"
@@ -332,6 +374,27 @@ def _diagram(slide, d: Diagram, alt: str, x: float, y: float) -> None:
         _fill_paragraph(tf.paragraphs[0], (Run(b.name),), PT_BOX_NAME, INK)
         for line in b.lines:
             _fill_paragraph(tf.add_paragraph(), line, PT_BOX_LINE, GRAY)
+    for a in d.arrows:
+        _arrow(group, a, x, y)
+    for lb in d.labels:
+        cross_text = _is_cross_text(lb, d)
+        color = ACCENT if cross_text or lb.emphasis else GRAY
+        _flow_text(
+            group,
+            "× の文" if cross_text else "ラベル",
+            x + lb.x,
+            y + lb.y,
+            lb.w,
+            lb.h,
+            [(line, PT_FLOW_LABEL, color) for line in lb.lines],
+        )
+    for c in d.crosses:
+        box = group.shapes.add_textbox(Inches(x + c.x), Inches(y + c.y), Inches(c.w), Inches(c.h))
+        box.name = "× 印"
+        tf = box.text_frame
+        _frame(tf, MSO_ANCHOR.MIDDLE)
+        tf.word_wrap = False
+        _fill_paragraph(tf.paragraphs[0], (Run("×"),), PT_CROSS, ACCENT)
 
 
 def _diagram_figure(slide, s: DiagramFigure) -> None:
