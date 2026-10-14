@@ -16,6 +16,7 @@ from slidekit.fit import (
     PT_COLUMN_TEXT,
     PT_COVER_LINE,
     PT_COVER_TITLE,
+    PT_FLOW_NOTE,
     PT_HEADING,
     PT_STATEMENT,
     gloss_pt,
@@ -23,50 +24,13 @@ from slidekit.fit import (
     table_row_height_in,
     text_height_in,
 )
+from slidekit.flow import FlowError, FlowProblem, FlowSpec, parse_flow
 from slidekit.grid import Grid, GridError, Problem, resolve
+from slidekit.inline import Run, Text, inline_problems, is_emoji
+from slidekit.inline import runs as _runs
+from slidekit.layout import NOTE_GAP, Diagram, layout_flow
 
-# Unicode 15.1 の emoji-data.txt の Extended_Pictographic の範囲（両端を含む）。
-_EXTENDED_PICTOGRAPHIC = (
-    (0x00A9, 0x00A9), (0x00AE, 0x00AE), (0x203C, 0x203C), (0x2049, 0x2049),
-    (0x2122, 0x2122), (0x2139, 0x2139), (0x2194, 0x2199), (0x21A9, 0x21AA),
-    (0x231A, 0x231B), (0x2328, 0x2328), (0x2388, 0x2388), (0x23CF, 0x23CF),
-    (0x23E9, 0x23F3), (0x23F8, 0x23FA), (0x24C2, 0x24C2), (0x25AA, 0x25AB),
-    (0x25B6, 0x25B6), (0x25C0, 0x25C0), (0x25FB, 0x25FE), (0x2600, 0x2605),
-    (0x2607, 0x2612), (0x2614, 0x2685), (0x2690, 0x2705), (0x2708, 0x2712),
-    (0x2714, 0x2714), (0x2716, 0x2716), (0x271D, 0x271D), (0x2721, 0x2721),
-    (0x2728, 0x2728), (0x2733, 0x2734), (0x2744, 0x2744), (0x2747, 0x2747),
-    (0x274C, 0x274C), (0x274E, 0x274E), (0x2753, 0x2755), (0x2757, 0x2757),
-    (0x2763, 0x2767), (0x2795, 0x2797), (0x27A1, 0x27A1), (0x27B0, 0x27B0),
-    (0x27BF, 0x27BF), (0x2934, 0x2935), (0x2B05, 0x2B07), (0x2B1B, 0x2B1C),
-    (0x2B50, 0x2B50), (0x2B55, 0x2B55), (0x3030, 0x3030), (0x303D, 0x303D),
-    (0x3297, 0x3297), (0x3299, 0x3299), (0x1F000, 0x1F0FF), (0x1F10D, 0x1F10F),
-    (0x1F12F, 0x1F12F), (0x1F16C, 0x1F171), (0x1F17E, 0x1F17F), (0x1F18E, 0x1F18E),
-    (0x1F191, 0x1F19A), (0x1F1AD, 0x1F1E5), (0x1F201, 0x1F20F), (0x1F21A, 0x1F21A),
-    (0x1F22F, 0x1F22F), (0x1F232, 0x1F23A), (0x1F23C, 0x1F23F), (0x1F249, 0x1F3FA),
-    (0x1F400, 0x1F53D), (0x1F546, 0x1F64F), (0x1F680, 0x1F6FF), (0x1F774, 0x1F77F),
-    (0x1F7D5, 0x1F7FF), (0x1F80C, 0x1F80F), (0x1F848, 0x1F84F), (0x1F85A, 0x1F85F),
-    (0x1F888, 0x1F88F), (0x1F8AE, 0x1F8FF), (0x1F90C, 0x1F93A), (0x1F93C, 0x1F945),
-    (0x1F947, 0x1FAFF), (0x1FC00, 0x1FFFD),
-)  # fmt: skip
-_VARIATION_SELECTOR_16 = 0xFE0F
-
-
-def _is_emoji(ch: str) -> bool:
-    cp = ord(ch)
-    if cp == _VARIATION_SELECTOR_16:
-        return True
-    return any(lo <= cp <= hi for lo, hi in _EXTENDED_PICTOGRAPHIC)
-
-
-@dataclass(frozen=True)
-class Run:
-    """文字の連なり 1 つ。emphasis は強調色（太字ではない）。"""
-
-    text: str
-    emphasis: bool = False
-
-
-Text = tuple[Run, ...]
+__all__ = ["Run", "Text"]  # inline.py へ移した。ここからも読める
 
 
 @dataclass(frozen=True)
@@ -103,6 +67,16 @@ class Figure:
 
 
 @dataclass(frozen=True)
+class DiagramFigure:
+    heading: str
+    alt: str
+    ref: str
+    diagram: Diagram
+    note: Text | None
+    heading_gloss: str | None = None
+
+
+@dataclass(frozen=True)
 class Table:
     heading: str
     header: list[Text]
@@ -126,12 +100,19 @@ class ImageBlock:
 
 
 @dataclass(frozen=True)
+class DiagramBlock:
+    alt: str
+    ref: str
+    diagram: Diagram
+
+
+@dataclass(frozen=True)
 class TextBlock:
     text: Text
     gloss: str | None = None
 
 
-Block = BulletsBlock | ImageBlock | TextBlock
+Block = BulletsBlock | ImageBlock | DiagramBlock | TextBlock
 
 
 @dataclass(frozen=True)
@@ -142,7 +123,7 @@ class TwoColumn:
     heading_gloss: str | None = None
 
 
-Slide = Cover | Statement | Bullets | Figure | Table | TwoColumn
+Slide = Cover | Statement | Bullets | Figure | DiagramFigure | Table | TwoColumn
 
 
 @dataclass(frozen=True)
@@ -206,17 +187,15 @@ def _grid_message(ref: str, p: Problem) -> str:
     return f"格子ファイル {ref} の {where}: {p.message}"
 
 
-def _runs(text: str) -> Text:
-    runs: list[Run] = []
-    pos = 0
-    for m in _EMPHASIS.finditer(text):
-        if m.start() > pos:
-            runs.append(Run(text[pos : m.start()]))
-        runs.append(Run(m.group(1), emphasis=True))
-        pos = m.end()
-    if pos < len(text):
-        runs.append(Run(text[pos:]))
-    return tuple(runs)
+def _flow_message(ref: str, p: FlowProblem) -> str:
+    """構成図ファイルの違反を、原稿の行の報告に載せる文にする。"""
+    if p.line is None:
+        return f"構成図ファイル {ref}: {p.message}"
+    return f"構成図ファイル {ref} の {p.line} 行目: {p.message}"
+
+
+def _is_flow(ref: str) -> bool:
+    return ref.endswith(".flow")
 
 
 @dataclass(frozen=True)
@@ -234,6 +213,8 @@ class _Parser:
         # 現在のスライドの添え訳。結びつけた対象の原稿の行番号 → 添え訳の行。
         self._glosses: dict[int, _Line] = {}
         self._used_glosses: set[int] = set()
+        # 構成図ファイルの解析結果（参照 → 構成図、または報告する文）。同じ参照は 1 度だけ読む。
+        self._flows: dict[str, FlowSpec | list[str]] = {}
 
     def add(self, line: int, message: str) -> None:
         p = Problem(line, None, message)
@@ -293,7 +274,7 @@ class _Parser:
     def _check_emoji(self, no: int, raw: str) -> None:
         seen: set[str] = set()
         for ch in raw:
-            if _is_emoji(ch) and ch not in seen:
+            if is_emoji(ch) and ch not in seen:
                 seen.add(ch)
                 self.add(no, f"絵文字 `{ch}`（U+{ord(ch):04X}）は使えません")
 
@@ -319,22 +300,21 @@ class _Parser:
             elif _HTML.match(s):
                 self.add(ln.no, "HTML は使えません")
                 tainted = True
-            if _IMAGE.match(s):
-                continue  # 画像の行は参照の検証で見る（リンクとは別物）
-            if "`" in s and not s.startswith("```"):
-                self.add(ln.no, "インラインコード（`` ` ``）は使えません")
-            if _LINK.search(s):
-                self.add(ln.no, "リンクは使えません")
-            if re.search(r"__.+?__", s):
-                self.add(ln.no, "`__強調__` は使えません。強調は `**語句**` だけです")
-            if re.search(r"~~.+?~~", s):
-                self.add(ln.no, "`~~取り消し~~` は使えません")
+            image = _IMAGE.match(s)
+            if image:
+                # 画像の行は参照の検証で見る（リンクとは別物）。構成図の強調はその行で数える。
+                if _is_flow(image.group(2).strip()):
+                    flow = self._flow(image.group(2).strip())
+                    if isinstance(flow, FlowSpec) and flow.emphasis_lines:
+                        emphasis_seen += 1
+                        if emphasis_seen == 2:
+                            self.add(ln.no, "強調は 1 枚のスライドに 1 か所までです")
+                continue
+            for reason in inline_problems(s):
+                if reason.startswith("インラインコード") and s.startswith("```"):
+                    continue  # コードブロックとして報告済み
+                self.add(ln.no, reason)
             spans = list(_EMPHASIS.finditer(s))
-            rest = _EMPHASIS.sub("", s)
-            if "**" in rest:
-                self.add(ln.no, "強調の `**` が閉じていません")
-            if _PAIRED_STAR.search(rest.replace("**", "")):
-                self.add(ln.no, "`*強調*` は使えません。強調は `**語句**` だけです")
             if spans and is_heading:
                 self.add(ln.no, "見出しの中に強調は書けません")
             elif spans:
@@ -597,8 +577,37 @@ class _Parser:
 
     # --- 図 ---
 
-    def _image(self, ln: _Line) -> tuple[str, str, Grid] | None:
-        """画像の行を検証して (説明, 参照, 格子) にする。違反は原稿の行番号で報告する。"""
+    def _flow(self, ref: str) -> FlowSpec | list[str]:
+        """構成図ファイルを読んで解析する。失敗は報告する文の一覧。"""
+        if ref not in self._flows:
+            try:
+                text = (self.base_dir / ref).read_text(encoding="utf-8")
+            except (OSError, UnicodeDecodeError) as e:
+                self._flows[ref] = [f"構成図ファイル {ref} を読めません ({e})"]
+            else:
+                try:
+                    self._flows[ref] = parse_flow(text)
+                except FlowError as e:
+                    self._flows[ref] = [_flow_message(ref, p) for p in e.problems]
+        return self._flows[ref]
+
+    def _diagram(self, ln: _Line, ref: str, max_w: float, max_h: float) -> Diagram | None:
+        flow = self._flow(ref)
+        if isinstance(flow, FlowSpec):
+            try:
+                return layout_flow(flow, max_w, max_h)
+            except FlowError as e:
+                messages = [_flow_message(ref, p) for p in e.problems]
+        else:
+            messages = flow
+        for m in messages:
+            self.add(ln.no, m)
+        return None
+
+    def _image(
+        self, ln: _Line, max_w: float = BODY_WIDTH, max_h: float = BODY_BOX_H
+    ) -> tuple[str, str, Grid | Diagram] | None:
+        """画像の行を検証して (説明, 参照, 格子か構成図) にする。違反は原稿の行番号で報告する。"""
         m = _IMAGE.match(ln.s)
         assert m is not None
         alt, ref = m.group(1).strip(), m.group(2).strip()
@@ -606,6 +615,9 @@ class _Parser:
         if not alt:
             self.add(ln.no, "画像の説明が空です。`![説明](参照)` の説明は代替テキストになります")
             ok = False
+        if _is_flow(ref):
+            diagram = self._diagram(ln, ref, max_w, max_h)
+            return (alt, ref, diagram) if ok and diagram is not None else None
         try:
             grid = resolve(ref, self.base_dir)
         except GridError as e:
@@ -614,17 +626,25 @@ class _Parser:
             return None
         return (alt, ref, grid) if ok else None
 
-    def _figure(self, heading: str, body: list[_Line]) -> Figure | None:
-        image = self._image(body[0])
+    def _figure(self, heading: str, body: list[_Line]) -> Figure | DiagramFigure | None:
+        m = _IMAGE.match(body[0].s)
+        assert m is not None
+        flow = _is_flow(m.group(2).strip())
         self._reject_gloss(body[0], "画像")
         caption: Text | None = None
         caption_gloss: str | None = None
+        max_h = BODY_BOX_H
         valid = True
         if len(body) >= 2:
             cap = body[1]
             if _IMAGE.match(cap.s) or _BULLET.match(cap.raw) or cap.s.startswith("|"):
                 self.add(cap.no, "図は画像 1 つと、任意の 1 行の説明文だけです")
                 valid = False
+            elif flow:
+                caption = _runs(cap.s)
+                self._reject_gloss(cap, "注記")
+                n = self.fit(cap.no, caption, "構成図の注記", PT_FLOW_NOTE, BODY_WIDTH, 3)
+                max_h = BODY_BOX_H - text_height_in(n, PT_FLOW_NOTE) - NOTE_GAP
             else:
                 caption = _runs(cap.s)
                 caption_gloss = self._gloss(cap, PT_CAPTION, FIGURE_CAPTION_WIDTH)[0]
@@ -632,10 +652,13 @@ class _Parser:
         if len(body) > 2:
             self.add(body[2].no, "図の説明文は 1 行までです")
             valid = False
+        image = self._image(body[0], BODY_WIDTH, max_h)
         if image is None or not valid:
             return None
-        alt, ref, grid = image
-        return Figure(heading, alt, ref, grid, caption, caption_gloss=caption_gloss)
+        alt, ref, picture = image
+        if isinstance(picture, Diagram):
+            return DiagramFigure(heading, alt, ref, picture, caption)
+        return Figure(heading, alt, ref, picture, caption, caption_gloss=caption_gloss)
 
     # --- 表 ---
 
@@ -826,10 +849,13 @@ class _Parser:
         only = lines[0]
         if _IMAGE.match(only.s):
             self._reject_gloss(only, "画像")
-            image = self._image(only)
+            image = self._image(only, COLUMN_WIDTH, BODY_BOX_H)
             if image is None:
                 return None
-            return ImageBlock(*image)
+            alt, ref, picture = image
+            if isinstance(picture, Diagram):
+                return DiagramBlock(alt, ref, picture)
+            return ImageBlock(alt, ref, picture)
         if only.s.startswith("|"):
             self.add(only.no, what)
             return None

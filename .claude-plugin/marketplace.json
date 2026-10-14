@@ -9,7 +9,7 @@
       "name": "less-is-more-slide",
       "source": "./plugin",
       "description": "人が作ったように見える装飾のないスライド（PPTX）を、原稿から作る Skill と、作成役・点検役の Agent",
-      "version": "0.2.0"
+      "version": "0.3.0"
     }
   ]
 }

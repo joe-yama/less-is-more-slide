@@ -6,6 +6,8 @@ from pathlib import Path
 from slidekit.manuscript import (
     Bullets,
     Cover,
+    DiagramBlock,
+    DiagramFigure,
     Figure,
     Statement,
     Table,
@@ -71,3 +73,24 @@ def test_bilingual_uses_all_six_layouts():
     deck = parse((EXAMPLES / "bilingual.md").read_text(encoding="utf-8"), EXAMPLES)
     assert {type(s) for s in deck.slides} == {Cover, Statement, Bullets, Figure, Table, TwoColumn}
     assert 5 <= len(deck.slides) <= 7
+
+
+def test_design_review_builds_with_eight_diagrams(tmp_path):
+    src = EXAMPLES / "design-review.md"
+    out = tmp_path / "design-review.pptx"
+    r = subprocess.run(
+        [sys.executable, str(BUILD), str(src), "-o", str(out)],
+        capture_output=True,
+        text=True,
+        timeout=120,
+        check=False,
+    )
+    assert r.returncode == 0, r.stderr
+    deck = parse(src.read_text(encoding="utf-8"), EXAMPLES)
+    figures = [s for s in deck.slides if isinstance(s, DiagramFigure)]
+    columns = [s for s in deck.slides if isinstance(s, TwoColumn)]
+    assert len(figures) == 6
+    assert len(columns) == 1
+    assert isinstance(columns[0].left, DiagramBlock)
+    assert isinstance(columns[0].right, DiagramBlock)
+    assert sum(1 for f in figures if f.note is not None) >= 2
