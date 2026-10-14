@@ -106,7 +106,7 @@ Issue: #14
   - Test first: `tests/test_plugin.py` が次を確かめて赤になる。作成役の定義に、構成図を構成や流れの説明だけに使うこと・構成図ファイルを原稿と同じフォルダに書くこと・拒否されたら構成図ファイルも直すことがあること。点検役の定義に、参照された構成図ファイルも読むこと・飾りの構成図を指摘することがあること。点検役の道具が読み取りだけのままであること。両方のマニフェストの版が 0.3.0 であること（既存の 0.2.0 のテストを置き換える）
   - Review: batch C / Risk: none
 
-- [ ] 6.4 すべてのテストと lint を通し、見本の PPTX を作る
+- [x] 6.4 すべてのテストと lint を通し、見本の PPTX を作る
   - Refs: D11、D12
   - Files: なし（確認だけ）
   - Verify: `uv run pytest` がすべて緑。`uv run ruff check . && uv run ruff format --check .` が通る。`uv run plugin/skills/slide/scripts/build.py examples/design-review.md -o <一時フォルダ>/design-review.pptx` と、`examples/sample.md`・`examples/bilingual.md` の生成が終了コード 0。`openspec validate add-flow-diagram --strict` が通る
