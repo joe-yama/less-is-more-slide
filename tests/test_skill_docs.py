@@ -173,6 +173,22 @@ def test_format_documents_the_flow_diagram():
     for key in ("配置の行", "箱の中の行", "範囲の枠", "矢印の行", "強調", "構成.flow"):
         assert key in section, key
     assert any("(構成.flow)" in b for b in blocks(FORMAT, "markdown"))
+    # 配置の決まり方と、拒否される書き方
+    assert "配置の決まり方" in section
+    for key in ("0.6 インチ", "3.0 インチ", "上回り", "下回り"):
+        assert key in section, key
+    rejected = section.split("拒否される書き方", 1)[1]
+    for key in (
+        "`->`",
+        "箱の内側を通る",
+        "回り込み",
+        "メンバーでない箱",
+        "一部だけ重なる",
+        "置ける場所がない",
+        "上限を超える",
+        "5 行目",
+    ):
+        assert key in rejected, key
 
 
 def test_skill_summarizes_the_flow_diagram():
