@@ -23,6 +23,7 @@ PT_PAGE_NUMBER = 12
 # 一言の補足（design.md D4）。
 PT_STATEMENT_NOTE = 24
 STATEMENT_NOTE_GAP_PT = 12  # 一言と補足の間、補足どうしの間
+TABLE_EMPHASIS_LINE_PT = 1.5  # 列の強調の枠の線の太さ（design.md D2・D7）
 
 # 構成図（design.md D3）。
 PT_BOX_NAME = 16

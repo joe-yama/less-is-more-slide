@@ -24,7 +24,6 @@ from slidekit.fit import (
     PT_BOX_NAME,
     PT_BULLET,
     PT_CAPTION,
-    PT_CELL,
     PT_COLUMN_BULLET,
     PT_COLUMN_TEXT,
     PT_COVER_LINE,
@@ -38,6 +37,7 @@ from slidekit.fit import (
     PT_STATEMENT_NOTE,
     STATEMENT_BOX_H,
     STATEMENT_NOTE_GAP_PT,
+    TABLE_EMPHASIS_LINE_PT,
     TABLE_ROW_H,
     gloss_pt,
     line_count,
@@ -424,7 +424,14 @@ def _diagram_figure(slide, s: DiagramFigure) -> None:
         _paragraphs(tf, [s.note], PT_FLOW_NOTE, INK, False)
 
 
-def _line_xml(side: str, visible: bool) -> str:
+def _line_xml(side: str, visible: bool, accent: bool = False) -> str:
+    if accent:
+        return (
+            f'<a:{side} xmlns:a="{_NS_A}" w="{int(Pt(TABLE_EMPHASIS_LINE_PT))}" '
+            f'cap="flat" cmpd="sng" algn="ctr">'
+            f'<a:solidFill><a:srgbClr val="{ACCENT}"/></a:solidFill>'
+            f'<a:prstDash val="solid"/></a:{side}>'
+        )
     if not visible:
         return f'<a:{side} xmlns:a="{_NS_A}" w="12700"><a:noFill/></a:{side}>'
     return (
@@ -432,6 +439,24 @@ def _line_xml(side: str, visible: bool) -> str:
         f'<a:solidFill><a:srgbClr val="{GRAY}"/></a:solidFill>'
         f'<a:prstDash val="solid"/></a:{side}>'
     )
+
+
+def _accent_sides(emphasis_col: int | None, ri: int, ci: int, n_rows: int) -> set[str]:
+    """強調した列を囲む線になる、このセルの辺。隣の列は向かい合う辺も同じ線にする。"""
+    if emphasis_col is None:
+        return set()
+    if ci == emphasis_col:
+        out = {"lnL", "lnR"}
+        if ri == 0:
+            out.add("lnT")
+        if ri == n_rows - 1:
+            out.add("lnB")
+        return out
+    if ci == emphasis_col - 1:
+        return {"lnR"}
+    if ci == emphasis_col + 1:
+        return {"lnL"}
+    return set()
 
 
 def _table(slide, s: Table) -> None:
@@ -463,15 +488,16 @@ def _table(slide, s: Table) -> None:
             cell.margin_top = cell.margin_bottom = Inches(CELL_MARGIN_V)
             cell.vertical_anchor = MSO_ANCHOR.MIDDLE
             cell.fill.background()
-            _fill_paragraph(cell.text_frame.paragraphs[0], text, PT_CELL, GRAY if ri == 0 else INK)
+            _fill_paragraph(cell.text_frame.paragraphs[0], text, s.pt, GRAY if ri == 0 else INK)
             gloss = glosses[ri][ci] if glosses else None
             if gloss is not None:
-                _gloss_paragraph(cell.text_frame, gloss, PT_CELL)
+                _gloss_paragraph(cell.text_frame, gloss, s.pt)
             tc_pr = cell._tc.get_or_add_tcPr()
             underline = ri in (0, n_rows - 1)
             sides = [("lnL", False), ("lnR", False), ("lnT", False), ("lnB", underline)]
+            accent = _accent_sides(s.emphasis_col, ri, ci, n_rows)
             for pos, (side, visible) in enumerate(sides):
-                tc_pr.insert(pos, parse_xml(_line_xml(side, visible)))
+                tc_pr.insert(pos, parse_xml(_line_xml(side, visible, side in accent)))
 
 
 def _block(slide, b: Block, x: float) -> None:

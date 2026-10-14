@@ -123,3 +123,121 @@ def test_section_title_gloss_is_24pt_and_ends_at_3_8_inches(tmp_path):
     assert p.runs[0].font.size.pt == 24
     assert near(bottom(gloss), 3.8)
     assert bottom(sec.shapes.title) == gloss.top
+
+
+# --- 16pt の表（design D6）と列の強調の線（design D7） ---
+
+ACCENT = "B23A2E"
+GRAY = "6B6B6B"
+
+
+def _long_cell() -> str:
+    """4 列の表で、18pt では 3 行、16pt では 2 行になる全角の文。"""
+    from slidekit import fit
+
+    width = 11.53 / 4 - 0.2
+    for n in range(1, 60):
+        text = "あ" * n
+        if (fit.line_count(text, 18, width), fit.line_count(text, 16, width)) == (3, 2):
+            return text
+    raise AssertionError("見つからない")
+
+
+def table_text(*, emphasis: bool = False, small: bool = False, gloss: bool = False) -> str:
+    c = "**C 案**" if emphasis else "C 案"
+    body2 = _long_cell() if small else "中"
+    lines = [
+        f"| 観点 | A 案 | B 案 | {c} |",
+        "|---|---|---|---|",
+        f"| 費用 | 高 | {body2} | 低 |",
+    ]
+    if gloss:
+        lines.append("^ | cost | | | low |")
+    lines.append("| 期間 | 長 | 中 | 短 |")
+    return "# T\n---\n## 比べる\n" + "\n".join(lines) + "\n"
+
+
+def cell_pr(table, r: int, c: int):
+    return table.cell(r, c)._tc.tcPr
+
+
+def side(table, r: int, c: int, name: str):
+    el = cell_pr(table, r, c).find(f"{{{NS_A}}}{name}")
+    assert el is not None
+    return el
+
+
+def color_of(el) -> str | None:
+    clr = el.find(f"{{{NS_A}}}solidFill/{{{NS_A}}}srgbClr")
+    return None if clr is None else clr.get("val")
+
+
+def is_accent(el) -> bool:
+    return (
+        el.get("w") == "19050"
+        and color_of(el) == ACCENT
+        and el.find(f"{{{NS_A}}}prstDash").get("val") == "solid"
+    )
+
+
+def test_small_table_uses_16pt_cells_and_10pt_glosses(tmp_path):
+    s = slides_of(tmp_path, table_text(small=True, gloss=True))[1]
+    table = box(s, "表").table
+    sizes = {
+        r.font.size.pt
+        for row in table.rows
+        for cell in row.cells
+        for p in cell.text_frame.paragraphs
+        for r in p.runs
+        if str(p.runs[0].font.color.rgb) != "767676"
+    }
+    assert sizes == {16}
+    glosses = [
+        p.runs[0].font
+        for row in table.rows
+        for cell in row.cells
+        for p in cell.text_frame.paragraphs
+        if str(p.runs[0].font.color.rgb) == "767676"
+    ]
+    assert glosses and {f.size.pt for f in glosses} == {10}
+
+
+def test_18pt_table_keeps_18pt_cells(tmp_path):
+    s = slides_of(tmp_path, table_text())[1]
+    table = box(s, "表").table
+    assert {
+        r.font.size.pt
+        for row in table.rows
+        for c in row.cells
+        for r in c.text_frame.paragraphs[0].runs
+    } == {18}
+
+
+def test_emphasis_column_is_boxed_in_accent(tmp_path):
+    s = slides_of(tmp_path, table_text(emphasis=True))[1]
+    table = box(s, "表").table
+    last = 2
+    for r in range(3):
+        assert is_accent(side(table, r, 3, "lnL"))
+        assert is_accent(side(table, r, 3, "lnR"))
+        assert is_accent(side(table, r, 2, "lnR"))  # 隣の列の向かい合う辺
+    assert is_accent(side(table, 0, 3, "lnT"))
+    assert is_accent(side(table, last, 3, "lnB"))
+    # 見出し行の下の線は強調した列でも灰色のまま
+    below_head = side(table, 0, 3, "lnB")
+    assert color_of(below_head) == GRAY and below_head.get("w") == "12700"
+    assert str(table.cell(0, 3).text_frame.paragraphs[0].runs[0].font.color.rgb) == ACCENT
+
+
+def test_columns_other_than_the_emphasis_column_are_unchanged(tmp_path):
+    plain = box(slides_of(tmp_path, table_text())[1], "表").table
+    marked = box(slides_of(tmp_path, table_text(emphasis=True))[1], "表").table
+    for r in range(3):
+        for c in range(3):
+            for name in ("lnL", "lnR", "lnT", "lnB"):
+                if c == 2 and name == "lnR":
+                    continue
+                a, b = side(plain, r, c, name), side(marked, r, c, name)
+                assert (a.get("w"), color_of(a)) == (b.get("w"), color_of(b)), (r, c, name)
+    for r in range(3):
+        assert plain.cell(r, 0)._tc.tcPr.xpath("./a:solidFill|./a:noFill")
