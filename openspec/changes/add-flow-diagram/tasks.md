@@ -22,7 +22,7 @@ Issue: #14
 
 ## 2. 構成図ファイルの解析（`slidekit/flow.py`）
 
-- [ ] 2.1 行の種類と配置の行を解析する
+- [x] 2.1 行の種類と配置の行を解析する
   - Refs: Requirement「構成図ファイルの行」「配置の行」、D1、D2
   - Files: `slidekit/flow.py`（新規）、`tests/test_flow.py`（新規）
   - Interface: `flow.parse_flow(text: str) -> FlowSpec`、`flow.FlowError(problems)`、`flow.FlowProblem(line: int | None, message: str)`、`FlowSpec`・`BoxSpec`・`GroupSpec`・`ArrowSpec`（D1 のフィールド）
