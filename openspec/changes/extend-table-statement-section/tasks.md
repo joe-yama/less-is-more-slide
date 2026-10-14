@@ -35,7 +35,7 @@ Issue: #15
   - Test first: 次を確かめて赤になる。2 枚目以降の `# 補足資料` だけのスライドが `Section` になること、その添え訳が `title_gloss` に入ること。`# ` とほかの行が混ざったスライドの、`# ` の行での拒否（`test_h1_outside_the_cover_is_rejected` を、この条件に書き換える。D9）。`# ` の 2 行の拒否。空のタイトルと、40pt で 3 行になるタイトルの拒否。表紙の判定が変わらないこと（既存のテストが緑のまま）
   - Review: batch A / Risk: none
 
-- [ ] 2.4 表を 18pt で入らなければ 16pt で判定し直す
+- [x] 2.4 表を 18pt で入らなければ 16pt で判定し直す
   - Refs: Requirement「表の文字の大きさ」「添え訳の文字」、D2、D6
   - Files: `slidekit/fit.py`、`slidekit/manuscript.py`、`tests/test_manuscript_table_size.py`（新規）
   - Interface: `Table.pt`、`fit.PT_CELL_SMALL`
