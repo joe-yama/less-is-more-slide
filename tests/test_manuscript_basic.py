@@ -84,8 +84,9 @@ def test_statement_slide():
     assert plain(s.text) == "結論から言うと、来期は値上げしない。"
 
 
-def test_statement_with_two_lines_and_no_heading_is_rejected():
-    assert lines_of("# 題\n---\n一行目\n二行目\n") == [3]
+def test_statement_with_three_notes_and_no_heading_is_rejected():
+    # 一言 + 補足 2 行まで。4 行目（3 つ目の補足）の行で拒否する（D9）
+    assert lines_of("# 題\n---\n一行目\n二行目\n三行目\n四行目\n") == [6]
 
 
 def test_statement_cannot_be_a_bullet():

@@ -19,6 +19,10 @@ PT_COLUMN_BULLET = 22
 PT_COLUMN_TEXT = 22
 PT_PAGE_NUMBER = 12
 
+# 一言の補足（design.md D4）。
+PT_STATEMENT_NOTE = 24
+STATEMENT_NOTE_GAP_PT = 12  # 一言と補足の間、補足どうしの間
+
 # 構成図（design.md D3）。
 PT_BOX_NAME = 16
 PT_BOX_LINE = 12
@@ -42,6 +46,7 @@ LINE_HEIGHT_FACTOR = 1.5
 BODY_BOX_H = 4.9  # 箇条書き・2 列の本文・表の下端までの高さ（見出しの下 1.8in から）
 BULLET_GAP_PT = 12  # 箇条書きの項目の間
 COLUMN_BULLET_GAP_PT = 10  # 2 列の箇条書きの項目の間
+STATEMENT_BOX_H = 6.3  # 一言の枠の高さ（7.5 - 2 * 見出しの上端 0.6）
 TABLE_ROW_H = 0.6  # 表の行の最低の高さ
 CELL_MARGIN_V = 0.05  # 表のセルの上下の余白（それぞれ）
 

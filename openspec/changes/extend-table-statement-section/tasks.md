@@ -21,7 +21,7 @@ Issue: #15
   - Test first: `tests/test_fit.py` で、`\n` を含む文の行数が部分ごとの行数の合計になること。`tests/test_manuscript_breaks.py` で、一言と表のセル（見出し行と本文）の `<br>` が `\n` になること。見出し・箇条書き・表紙・図の説明文・左右 2 列・添え訳の `<br>` の拒否（行番号）。`<br/>`・`<BR>` の拒否。先頭・末尾・続けて 2 つの `<br>` の拒否。`<br>` で 2 行にしたセルが、行数の判定で 2 行と数えられること。これらを確かめて赤になる
   - Review: batch A / Risk: none
 
-- [ ] 2.2 一言の補足を解析し、高さを判定する
+- [x] 2.2 一言の補足を解析し、高さを判定する
   - Refs: Requirement「一言レイアウト」「添え訳の書式」、D2、D4、D9
   - Files: `slidekit/fit.py`、`slidekit/manuscript.py`、`tests/test_manuscript_statement.py`（新規）、`tests/test_manuscript_basic.py`
   - Interface: `Statement.notes`、`Statement.note_glosses`、`fit.PT_STATEMENT_NOTE`、`fit.STATEMENT_NOTE_GAP_PT`、`fit.STATEMENT_BOX_H`

@@ -35,6 +35,7 @@ from slidekit.fit import (
     PT_HEADING,
     PT_PAGE_NUMBER,
     PT_STATEMENT,
+    STATEMENT_BOX_H,
     TABLE_ROW_H,
     gloss_pt,
     line_count,
@@ -263,7 +264,7 @@ def _cover(slide, s: Cover) -> None:
 
 
 def _statement(slide, s: Statement) -> None:
-    tf = _textbox(slide, "一言", MARGIN_X, HEAD_TOP, BODY_W, 7.5 - 2 * HEAD_TOP, MSO_ANCHOR.MIDDLE)
+    tf = _textbox(slide, "一言", MARGIN_X, HEAD_TOP, BODY_W, STATEMENT_BOX_H, MSO_ANCHOR.MIDDLE)
     _paragraphs(tf, [s.text], PT_STATEMENT, INK, False, glosses=[s.gloss])
 
 

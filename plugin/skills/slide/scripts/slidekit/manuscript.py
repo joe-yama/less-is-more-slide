@@ -19,6 +19,9 @@ from slidekit.fit import (
     PT_FLOW_NOTE,
     PT_HEADING,
     PT_STATEMENT,
+    PT_STATEMENT_NOTE,
+    STATEMENT_BOX_H,
+    STATEMENT_NOTE_GAP_PT,
     break_line_count,
     gloss_pt,
     table_row_height_in,
@@ -45,6 +48,8 @@ class Cover:
 class Statement:
     text: Text
     gloss: str | None = None
+    notes: list[Text] = field(default_factory=list)
+    note_glosses: list[str | None] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -170,6 +175,7 @@ _BR_EDGE_OR_DOUBLE = re.compile(r"^\s*<br>|<br>\s*$|<br>\s*<br>")
 _EPS = 1e-9
 MAX_BULLETS = 5
 MAX_COVER_LINES = 3
+MAX_STATEMENT_NOTES = 2
 MIN_COLUMNS, MAX_COLUMNS = 2, 4
 MAX_TABLE_ROWS = 6
 MAX_BLOCK_BULLETS = 4
@@ -442,16 +448,18 @@ class _Parser:
         ]
         return [c or None for c in cells], counts
 
-    def _check_stack(self, label: str, paragraphs: list[tuple[int, float]]) -> None:
+    def _check_stack(
+        self, label: str, paragraphs: list[tuple[int, float]], box_h: float = BODY_BOX_H
+    ) -> None:
         """段落（原稿の行, 間隔を含む高さ）を上から積み、下端が最初に枠を超えた段落の行を報告する。"""
         used = 0.0
         for no, h in paragraphs:
             used += h
-            if used > BODY_BOX_H + _EPS:
+            if used > box_h + _EPS:
                 self.add(
                     no,
                     f"{label}が枠の高さに収まりません（この項目の下端が {used:.2f}in、"
-                    f"枠は {BODY_BOX_H}in）。項目を短くするか、減らしてください",
+                    f"枠は {box_h}in）。項目を短くするか、減らしてください",
                 )
                 return
 
@@ -532,20 +540,45 @@ class _Parser:
     def _statement(self, lines: list[_Line]) -> Statement | None:
         first = lines[0]
         self._br_allowed.update(ln.no for ln in lines[:3])
-        if len(lines) > 1:
+        if len(lines) > 1 + MAX_STATEMENT_NOTES:
             self.add(
-                first.no,
-                "見出し（`## `）のないスライドは 1 行の文だけ（一言）です。"
-                "複数行なら `## 見出し` を付けて箇条書きにしてください",
+                lines[1 + MAX_STATEMENT_NOTES].no,
+                f"一言の補足は {MAX_STATEMENT_NOTES} 行までです。"
+                "もっと書くなら `## 見出し` を付けて箇条書きにしてください",
             )
             return None
-        s = first.s
-        if _BULLET.match(first.raw) or s.startswith(("|", "![", "## ")):
-            self.add(first.no, "見出しのないスライドは 1 行の文だけ（一言）です")
+        ok = True
+        for ln in lines:
+            if _BULLET.match(ln.raw) or ln.s.startswith(("|", "![", "## ")):
+                self.add(ln.no, "見出しのないスライドの行は文だけ（一言と、その補足）です")
+                ok = False
+        if not ok:
             return None
-        text = self._text(first.no, s)
-        self.fit(first.no, text, "一言", PT_STATEMENT, BODY_WIDTH, 3)
-        return Statement(text, self._gloss(first, PT_STATEMENT, BODY_WIDTH)[0])
+        text = self._text(first.no, first.s)
+        n = self.fit(first.no, text, "一言", PT_STATEMENT, BODY_WIDTH, 3)
+        gloss, g = self._gloss(first, PT_STATEMENT, BODY_WIDTH)
+        paragraphs: list[tuple[int, float]] = [(first.no, text_height_in(n, PT_STATEMENT))]
+        if gloss is not None:
+            paragraphs.append(
+                (self._glosses[first.no].no, text_height_in(g, gloss_pt(PT_STATEMENT)))
+            )
+        notes: list[Text] = []
+        note_glosses: list[str | None] = []
+        for ln in lines[1:]:
+            note = self._text(ln.no, ln.s)
+            notes.append(note)
+            n = self.fit(ln.no, note, "一言の補足", PT_STATEMENT_NOTE, BODY_WIDTH, 2)
+            paragraphs.append(
+                (ln.no, STATEMENT_NOTE_GAP_PT / 72 + text_height_in(n, PT_STATEMENT_NOTE))
+            )
+            note_gloss, g = self._gloss(ln, PT_STATEMENT_NOTE, BODY_WIDTH)
+            note_glosses.append(note_gloss)
+            if note_gloss is not None:
+                paragraphs.append(
+                    (self._glosses[ln.no].no, text_height_in(g, gloss_pt(PT_STATEMENT_NOTE)))
+                )
+        self._check_stack("一言と補足", paragraphs, STATEMENT_BOX_H)
+        return Statement(text, gloss, notes, note_glosses)
 
     def _with_heading(self, heading: str, body: list[_Line]) -> Slide | None:
         if all(_BULLET.match(ln.raw) for ln in body):
