@@ -65,7 +65,7 @@ Issue: #14
 
 ## 4. 原稿への組み込み
 
-- [ ] 4.1 図と左右 2 列から構成図ファイルを参照し、注記・強調・違反の報告を組み込む
+- [x] 4.1 図と左右 2 列から構成図ファイルを参照し、注記・強調・違反の報告を組み込む
   - Refs: Requirement「構成図の図と注記」「図レイアウト」「左右 2 列レイアウト」「構成図の強調」「構成図の違反の報告」、D1、D8、D10
   - Files: `slidekit/manuscript.py`、`tests/test_manuscript_flow.py`（新規）、`tests/test_build_cli.py`
   - Interface: `manuscript.DiagramFigure`、`manuscript.DiagramBlock`（D1 のフィールド）
