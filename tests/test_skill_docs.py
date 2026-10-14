@@ -13,6 +13,7 @@ from slidekit.manuscript import (
     Cover,
     DiagramFigure,
     Figure,
+    Section,
     Statement,
     Table,
     TwoColumn,
@@ -25,7 +26,7 @@ SKILL = SKILL_DIR / "SKILL.md"
 FORMAT = SKILL_DIR / "references" / "format.md"
 WRITING = SKILL_DIR / "references" / "writing.md"
 BUILD = SKILL_DIR / "scripts" / "build.py"
-SIX = {Cover, Statement, Bullets, Figure, Table, TwoColumn}
+SEVEN = {Cover, Section, Statement, Bullets, Figure, Table, TwoColumn}
 
 FENCE = re.compile(r"^```(\w*)\n(.*?)^```", re.DOTALL | re.MULTILINE)
 # 表紙から始まらない例には、確かめるときだけこの表紙を前に足す
@@ -86,8 +87,35 @@ def test_every_manuscript_example_builds(path, workdir):
 
 
 @pytest.mark.parametrize("path", [SKILL, FORMAT], ids=["SKILL.md", "format.md"])
-def test_all_six_layouts_are_shown(path, tmp_path):
-    assert kinds_in(path, tmp_path) - {DiagramFigure} == SIX
+def test_all_seven_layouts_are_shown(path, tmp_path):
+    assert kinds_in(path, tmp_path) - {DiagramFigure} == SEVEN
+
+
+def parsed_slides(path: Path, folder: Path) -> list:
+    place_flow(path, folder)
+    return [s for m in manuscripts(path) for s in parse(m, folder).slides]
+
+
+def test_format_shows_statement_note_break_and_column_emphasis(tmp_path):
+    slides = parsed_slides(FORMAT, tmp_path)
+    assert any(isinstance(s, Statement) and s.notes for s in slides)
+    assert any(isinstance(s, Table) and s.emphasis_col is not None for s in slides)
+    assert any("<br>" in b for b in blocks(FORMAT, "markdown"))
+    assert any(isinstance(s, Statement) and "\n" in s.text[0].text for s in slides)
+
+
+def test_format_documents_the_new_layouts_and_rules():
+    text = FORMAT.read_text(encoding="utf-8")
+    assert "## 7 種のレイアウト" in text
+    assert "### 中扉" in text
+    for key in ("<br>", "補足", "16pt", "列の強調", "中扉"):
+        assert key in text, key
+
+
+def test_writing_has_the_break_and_note_rules():
+    text = WRITING.read_text(encoding="utf-8")
+    assert "意味の切れ目で `<br>` を入れる" in text
+    assert "補足は、一言の理由か条件を 1〜2 行で書く" in text
 
 
 def test_skill_commands_use_the_design_form():

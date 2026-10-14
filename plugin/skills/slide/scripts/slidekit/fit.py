@@ -15,9 +15,15 @@ PT_STATEMENT = 40
 PT_BULLET = 24
 PT_CAPTION = 20
 PT_CELL = 18
+PT_CELL_SMALL = 16  # 18pt で入らない表を 1 段だけ小さくする（design.md D6）
 PT_COLUMN_BULLET = 22
 PT_COLUMN_TEXT = 22
 PT_PAGE_NUMBER = 12
+
+# 一言の補足（design.md D4）。
+PT_STATEMENT_NOTE = 24
+STATEMENT_NOTE_GAP_PT = 12  # 一言と補足の間、補足どうしの間
+TABLE_EMPHASIS_LINE_PT = 1.5  # 列の強調の枠の線の太さ（design.md D2・D7）
 
 # 構成図（design.md D3）。
 PT_BOX_NAME = 16
@@ -42,6 +48,7 @@ LINE_HEIGHT_FACTOR = 1.5
 BODY_BOX_H = 4.9  # 箇条書き・2 列の本文・表の下端までの高さ（見出しの下 1.8in から）
 BULLET_GAP_PT = 12  # 箇条書きの項目の間
 COLUMN_BULLET_GAP_PT = 10  # 2 列の箇条書きの項目の間
+STATEMENT_BOX_H = 6.3  # 一言の枠の高さ（7.5 - 2 * 見出しの上端 0.6）
 TABLE_ROW_H = 0.6  # 表の行の最低の高さ
 CELL_MARGIN_V = 0.05  # 表のセルの上下の余白（それぞれ）
 
@@ -55,6 +62,11 @@ def line_count(text: str, font_pt: float, box_width_in: float) -> int:
     """合計幅 ÷ 枠の幅（em）の切り上げ。和文はどこでも折り返せるものとする。"""
     box_em = box_width_in * 72 / font_pt
     return math.ceil(text_width_em(text) / box_em - _EPS)
+
+
+def break_line_count(text: str, font_pt: float, box_width_in: float) -> int:
+    """改行（`\\n`）で分けた部分ごとの `line_count` の合計。改行のない文は `line_count` と同じ。"""
+    return sum(line_count(part, font_pt, box_width_in) for part in text.split("\n"))
 
 
 def text_height_in(lines: int, font_pt: float) -> float:

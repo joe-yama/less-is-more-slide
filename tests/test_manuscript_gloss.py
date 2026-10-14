@@ -270,10 +270,11 @@ def test_other_gloss_limits_are_two_lines():
         "column bullet": (PREFIX + f"## H\n- a\n^ {zen(13, COLUMN - INDENT, 3)}\n|||\nB\n", 5),
         "table cell": (
             PREFIX
-            + f"## H\n| a | b |\n|---|---|\n| 1 | 2 |\n^ | {zen(11, BODY / 2 - 0.2, 3)} | |\n",
+            + f"## H\n| a | b |\n|---|---|\n| 1 | 2 |\n^ | {zen(10, BODY / 2 - 0.2, 3)} | |\n",
             7,
         ),
     }
+    # 表のセルの添え訳は、18pt の表では 11pt、18pt で入らず 16pt に判定し直した表では 10pt で数える
     for name, (text, line) in over.items():
         assert bad_lines(text) == [line], name
 
@@ -318,7 +319,8 @@ def test_two_column_right_bullets_height():
 def table_with(gloss_rows: set[int]) -> tuple[str, dict[int, int]]:
     """3 列の表。gloss_rows は添え訳をつける行（0 が見出し行、1〜5 が本文）。
     戻り値は原稿と、行 → その添え訳の原稿の行番号。"""
-    gloss = "^ | " + " | ".join([zen(11, BODY / 3 - 0.2, 2)] * 3) + " |"
+    # 10pt で 2 行（11pt でも 2 行）。この表は 18pt では溢れ、16pt に判定し直して 10pt で数える
+    gloss = "^ | " + " | ".join([zen(10, BODY / 3 - 0.2, 2)] * 3) + " |"
     lines = ["## H"]  # 3 行目
     where: dict[int, int] = {}
     for r in range(6):
@@ -332,23 +334,24 @@ def table_with(gloss_rows: set[int]) -> tuple[str, dict[int, int]]:
 
 
 def test_table_height_rejects_at_gloss_that_overflows():
-    text, where = table_with({0, 1, 2, 5})
+    # 16pt の表の行は、添え訳が 2 行で 0.85in。6 行すべてにつけると 5 行目までで 4.25in、6 行目で 5.1in。
+    text, where = table_with({0, 1, 2, 3, 4, 5})
     assert bad_lines(text) == [where[5]]
-    ok, _ = table_with({0, 1, 2})
+    ok, _ = table_with({0, 1, 2, 3, 4})
     deck(ok)  # 5 行目の添え訳を除けば通る
 
 
 def test_table_height_rejects_table_row_when_plain_already_overflows():
-    # 2 行のセルの行は 0.85in。見出し + 本文 5 行 = 5.1in で、添え訳がなくても本文 5 行目で超える。
-    cell = zen(18, BODY / 3 - 0.2, 2)
+    # 16pt で 2 行のセルの行は 0.767in。見出し + 本文 6 行 = 5.37in で、添え訳がなくても本文 6 行目で超える。
+    cell = zen(16, BODY / 3 - 0.2, 2)
     head = f"## H\n| {cell} | b | c |\n|---|---|---|\n"
-    rows = [f"| {cell} | b | c |" for _ in range(5)]
+    rows = [f"| {cell} | b | c |" for _ in range(6)]
     plain = PREFIX + head + "\n".join(rows) + "\n"
-    # 3 行目から ## H、4 見出し、5 区切り、6〜10 が本文。本文 5 行目は 10 行目
-    assert bad_lines(plain) == [10]
+    # 3 行目から ## H、4 見出し、5 区切り、6〜11 が本文。本文 6 行目は 11 行目
+    assert bad_lines(plain) == [11]
     # 添え訳をつけても、添え訳を除いた高さで超える行の報告は表の行のまま
     rows[0] += "\n^ | x | y | z |"
-    assert bad_lines(PREFIX + head + "\n".join(rows) + "\n") == [11]
+    assert bad_lines(PREFIX + head + "\n".join(rows) + "\n") == [12]
 
 
 def limit_deck() -> str:

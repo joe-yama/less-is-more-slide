@@ -46,7 +46,7 @@ class Run:
 
 Text = tuple[Run, ...]
 
-_EMPHASIS = re.compile(r"\*\*(.+?)\*\*")
+_EMPHASIS = re.compile(r"\*\*(.+?)\*\*", re.DOTALL)  # 改行（`\n`）をまたぐ強調も 1 つ
 _LINK = re.compile(r"\[[^\]]*\]\([^)]*\)")
 _PAIRED_STAR = re.compile(r"\*[^*]+\*")
 

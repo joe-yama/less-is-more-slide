@@ -24,7 +24,6 @@ from slidekit.fit import (
     PT_BOX_NAME,
     PT_BULLET,
     PT_CAPTION,
-    PT_CELL,
     PT_COLUMN_BULLET,
     PT_COLUMN_TEXT,
     PT_COVER_LINE,
@@ -35,6 +34,10 @@ from slidekit.fit import (
     PT_HEADING,
     PT_PAGE_NUMBER,
     PT_STATEMENT,
+    PT_STATEMENT_NOTE,
+    STATEMENT_BOX_H,
+    STATEMENT_NOTE_GAP_PT,
+    TABLE_EMPHASIS_LINE_PT,
     TABLE_ROW_H,
     gloss_pt,
     line_count,
@@ -61,6 +64,7 @@ from slidekit.manuscript import (
     Figure,
     ImageBlock,
     Run,
+    Section,
     Statement,
     Table,
     Text,
@@ -125,9 +129,12 @@ def _style_run(run, pt: float, color: str) -> None:
 def _fill_paragraph(p, text: Text, pt: float, color: str) -> None:
     p.alignment = PP_ALIGN.LEFT
     for r in text:
-        run = p.add_run()
-        run.text = r.text
-        _style_run(run, pt, ACCENT if r.emphasis else color)
+        for i, part in enumerate(r.text.split("\n")):
+            if i > 0:
+                p.add_line_break()  # `\n` の位置で、同じ段落の中で行を改める
+            run = p.add_run()
+            run.text = part
+            _style_run(run, pt, ACCENT if r.emphasis else color)
 
 
 def _bulletize(p) -> None:
@@ -248,14 +255,19 @@ def _white_background(slide) -> None:
 # --- レイアウトごと ---
 
 
-def _cover(slide, s: Cover) -> None:
+def _big_title(slide, title: str, gloss: str | None) -> None:
+    """表紙と中扉のタイトルと添え訳。下端（添え訳があれば添え訳の下端）が 3.8 インチ。"""
     shift = 0.0
-    if s.title_gloss is not None:
-        n = line_count(s.title_gloss, gloss_pt(PT_COVER_TITLE), BODY_W)
+    if gloss is not None:
+        n = line_count(gloss, gloss_pt(PT_COVER_TITLE), BODY_W)
         shift = text_height_in(n, gloss_pt(PT_COVER_TITLE))
         tf = _textbox(slide, "表紙のタイトルの添え訳", MARGIN_X, 3.8 - shift, BODY_W, shift)
-        _gloss_paragraph(tf, s.title_gloss, PT_COVER_TITLE, first=True)
-    _title(slide, s.title, MARGIN_X, 1.6 - shift, BODY_W, 2.2, PT_COVER_TITLE, MSO_ANCHOR.BOTTOM)
+        _gloss_paragraph(tf, gloss, PT_COVER_TITLE, first=True)
+    _title(slide, title, MARGIN_X, 1.6 - shift, BODY_W, 2.2, PT_COVER_TITLE, MSO_ANCHOR.BOTTOM)
+
+
+def _cover(slide, s: Cover) -> None:
+    _big_title(slide, s.title, s.title_gloss)
     if s.lines:
         has_gloss = any(g is not None for g in s.line_glosses)
         tf = _textbox(slide, "表紙の文", MARGIN_X, 4.1, BODY_W, 2.4 if has_gloss else 1.8)
@@ -263,8 +275,14 @@ def _cover(slide, s: Cover) -> None:
 
 
 def _statement(slide, s: Statement) -> None:
-    tf = _textbox(slide, "一言", MARGIN_X, HEAD_TOP, BODY_W, 7.5 - 2 * HEAD_TOP, MSO_ANCHOR.MIDDLE)
+    tf = _textbox(slide, "一言", MARGIN_X, HEAD_TOP, BODY_W, STATEMENT_BOX_H, MSO_ANCHOR.MIDDLE)
     _paragraphs(tf, [s.text], PT_STATEMENT, INK, False, glosses=[s.gloss])
+    for note, gloss in zip(s.notes, s.note_glosses or [None] * len(s.notes), strict=False):
+        p = tf.add_paragraph()
+        _fill_paragraph(p, note, PT_STATEMENT_NOTE, GRAY)
+        p.space_before = Pt(STATEMENT_NOTE_GAP_PT)
+        if gloss is not None:
+            _gloss_paragraph(tf, gloss, PT_STATEMENT_NOTE)
 
 
 def _bullets(slide, s: Bullets) -> None:
@@ -406,7 +424,14 @@ def _diagram_figure(slide, s: DiagramFigure) -> None:
         _paragraphs(tf, [s.note], PT_FLOW_NOTE, INK, False)
 
 
-def _line_xml(side: str, visible: bool) -> str:
+def _line_xml(side: str, visible: bool, accent: bool = False) -> str:
+    if accent:
+        return (
+            f'<a:{side} xmlns:a="{_NS_A}" w="{int(Pt(TABLE_EMPHASIS_LINE_PT))}" '
+            f'cap="flat" cmpd="sng" algn="ctr">'
+            f'<a:solidFill><a:srgbClr val="{ACCENT}"/></a:solidFill>'
+            f'<a:prstDash val="solid"/></a:{side}>'
+        )
     if not visible:
         return f'<a:{side} xmlns:a="{_NS_A}" w="12700"><a:noFill/></a:{side}>'
     return (
@@ -414,6 +439,24 @@ def _line_xml(side: str, visible: bool) -> str:
         f'<a:solidFill><a:srgbClr val="{GRAY}"/></a:solidFill>'
         f'<a:prstDash val="solid"/></a:{side}>'
     )
+
+
+def _accent_sides(emphasis_col: int | None, ri: int, ci: int, n_rows: int) -> set[str]:
+    """強調した列を囲む線になる、このセルの辺。隣の列は向かい合う辺も同じ線にする。"""
+    if emphasis_col is None:
+        return set()
+    if ci == emphasis_col:
+        out = {"lnL", "lnR"}
+        if ri == 0:
+            out.add("lnT")
+        if ri == n_rows - 1:
+            out.add("lnB")
+        return out
+    if ci == emphasis_col - 1:
+        return {"lnR"}
+    if ci == emphasis_col + 1:
+        return {"lnL"}
+    return set()
 
 
 def _table(slide, s: Table) -> None:
@@ -445,15 +488,16 @@ def _table(slide, s: Table) -> None:
             cell.margin_top = cell.margin_bottom = Inches(CELL_MARGIN_V)
             cell.vertical_anchor = MSO_ANCHOR.MIDDLE
             cell.fill.background()
-            _fill_paragraph(cell.text_frame.paragraphs[0], text, PT_CELL, GRAY if ri == 0 else INK)
+            _fill_paragraph(cell.text_frame.paragraphs[0], text, s.pt, GRAY if ri == 0 else INK)
             gloss = glosses[ri][ci] if glosses else None
             if gloss is not None:
-                _gloss_paragraph(cell.text_frame, gloss, PT_CELL)
+                _gloss_paragraph(cell.text_frame, gloss, s.pt)
             tc_pr = cell._tc.get_or_add_tcPr()
             underline = ri in (0, n_rows - 1)
             sides = [("lnL", False), ("lnR", False), ("lnT", False), ("lnB", underline)]
+            accent = _accent_sides(s.emphasis_col, ri, ci, n_rows)
             for pos, (side, visible) in enumerate(sides):
-                tc_pr.insert(pos, parse_xml(_line_xml(side, visible)))
+                tc_pr.insert(pos, parse_xml(_line_xml(side, visible, side in accent)))
 
 
 def _block(slide, b: Block, x: float) -> None:
@@ -553,6 +597,8 @@ def render(deck: Deck, out_path: Path) -> None:
         _white_background(slide)
         if isinstance(s, Cover):
             _cover(slide, s)
+        elif isinstance(s, Section):
+            _big_title(slide, s.title, s.title_gloss)
         elif isinstance(s, Statement):
             _statement(slide, s)
         else:
