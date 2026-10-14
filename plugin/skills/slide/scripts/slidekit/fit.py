@@ -57,6 +57,11 @@ def line_count(text: str, font_pt: float, box_width_in: float) -> int:
     return math.ceil(text_width_em(text) / box_em - _EPS)
 
 
+def break_line_count(text: str, font_pt: float, box_width_in: float) -> int:
+    """改行（`\\n`）で分けた部分ごとの `line_count` の合計。改行のない文は `line_count` と同じ。"""
+    return sum(line_count(part, font_pt, box_width_in) for part in text.split("\n"))
+
+
 def text_height_in(lines: int, font_pt: float) -> float:
     """行数 × 文字の大きさ × 行の高さの係数 ÷ 72 インチ。"""
     return lines * font_pt * LINE_HEIGHT_FACTOR / 72

@@ -14,7 +14,7 @@ Issue: #15
 
 ## 2. 原稿の解析と判定
 
-- [ ] 2.1 改行 `<br>` を解析し、行数の数え方を加える
+- [x] 2.1 改行 `<br>` を解析し、行数の数え方を加える
   - Refs: Requirement「改行」「未対応の書式の拒否」、D2、D3
   - Files: `slidekit/fit.py`、`slidekit/manuscript.py`、`tests/test_fit.py`、`tests/test_manuscript_breaks.py`（新規）
   - Interface: 改行は `Run.text` の中の `\n`。`fit.py` の、`\n` で分けた部分の行数を足す関数（名前は実装で決め、2.2・2.4・3.1 が使う）

@@ -61,3 +61,29 @@ def test_flow_diagram_sizes():
     assert fit.PT_FLOW_LABEL == 12
     assert fit.PT_CROSS == 32
     assert fit.PT_FLOW_NOTE == 16
+
+
+# --- 改行（`\n`）で分けた部分ごとの行数 ---
+
+
+def test_break_line_count_sums_the_parts():
+    from slidekit.fit import break_line_count
+
+    long = "あ" * 60
+    expected = line_count(long, 30, BODY_WIDTH_IN) + line_count("い", 30, BODY_WIDTH_IN)
+    assert expected >= 3
+    assert break_line_count(long + "\n" + "い", 30, BODY_WIDTH_IN) == expected
+
+
+def test_break_line_count_without_break_is_line_count():
+    from slidekit.fit import break_line_count
+
+    assert break_line_count("あ" * 60, 30, BODY_WIDTH_IN) == line_count(
+        "あ" * 60, 30, BODY_WIDTH_IN
+    )
+
+
+def test_break_line_count_two_short_parts_are_two_lines():
+    from slidekit.fit import break_line_count
+
+    assert break_line_count("あ\nい", 40, BODY_WIDTH_IN) == 2

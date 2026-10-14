@@ -19,8 +19,8 @@ from slidekit.fit import (
     PT_FLOW_NOTE,
     PT_HEADING,
     PT_STATEMENT,
+    break_line_count,
     gloss_pt,
-    line_count,
     table_row_height_in,
     text_height_in,
 )
@@ -163,6 +163,9 @@ _PAIRED_STAR = re.compile(r"\*[^*]+\*")
 _HEADING3 = re.compile(r"^#{3,6}(\s|$)")
 _NUMBERED = re.compile(r"^\d+\.(\s|$)")
 _HTML = re.compile(r"^<[A-Za-z!/]")
+_BR_TAG = re.compile(r"<\s*/?\s*br\b[^>]*>", re.IGNORECASE)  # `<br/>` や `<BR>` も含めて見つける
+_BR_AROUND = re.compile(r"\s*<br>\s*")
+_BR_EDGE_OR_DOUBLE = re.compile(r"^\s*<br>|<br>\s*$|<br>\s*<br>")
 
 _EPS = 1e-9
 MAX_BULLETS = 5
@@ -213,6 +216,8 @@ class _Parser:
         # 現在のスライドの添え訳。結びつけた対象の原稿の行番号 → 添え訳の行。
         self._glosses: dict[int, _Line] = {}
         self._used_glosses: set[int] = set()
+        # `<br>` を書ける行（一言とその補足、表の行）の原稿の行番号。
+        self._br_allowed: set[int] = set()
         # 構成図ファイルの解析結果（参照 → 構成図、または報告する文）。同じ参照は 1 度だけ読む。
         self._flows: dict[str, FlowSpec | list[str]] = {}
 
@@ -226,7 +231,7 @@ class _Parser:
     ) -> int:
         """枠に収まらない文字を拒否する（強調の記号は幅に数えない）。行数を返す。"""
         plain = text if isinstance(text, str) else "".join(r.text for r in text)
-        n = line_count(plain, pt, width)
+        n = break_line_count(plain, pt, width)
         if n > max_lines:
             self.add(
                 no,
@@ -267,9 +272,31 @@ class _Parser:
                 for target_no, gloss in self._glosses.items():
                     if target_no not in self._used_glosses:
                         self.add(gloss.no, "この行には添え訳をつけられません")
+        for _, group in groups:
+            self._check_br_places(group)
         return Deck(slides)
 
     # --- 行ごとの規則 ---
+
+    def _check_br_places(self, lines: list[_Line]) -> None:
+        """`<br>` を書ける行以外の `<br>` と、`<br>` 以外の書き方の `br` のタグを拒否する。"""
+        for ln in lines:
+            tags = _BR_TAG.findall(ln.raw)
+            if not tags:
+                continue
+            if ln.no not in self._br_allowed:
+                self.add(ln.no, "`<br>` は一言・補足・表のセルにだけ書けます")
+            elif any(t != "<br>" for t in tags):
+                self.add(ln.no, "改行は `<br>` と書きます（`<br/>` や `<BR>` は使えません）")
+
+    def _text(self, no: int, s: str) -> Text:
+        """`<br>` を書ける文を、`<br>` を `\\n` にした `Text` にする。前後と連続の `<br>` は拒否する。"""
+        return _runs(self._breaks(no, s))
+
+    def _breaks(self, no: int, s: str) -> str:
+        if _BR_EDGE_OR_DOUBLE.search(s):
+            self.add(no, "`<br>` の前後に文字が要ります（先頭・末尾・連続の `<br>` は書けません）")
+        return _BR_AROUND.sub("\n", s)
 
     def _check_emoji(self, no: int, raw: str) -> None:
         seen: set[str] = set()
@@ -297,7 +324,7 @@ class _Parser:
             elif _NUMBERED.match(s):
                 self.add(ln.no, "番号付きリストは使えません。`- ` の箇条書きを使ってください")
                 tainted = True
-            elif _HTML.match(s):
+            elif _HTML.match(s) and not _BR_TAG.match(s):
                 self.add(ln.no, "HTML は使えません")
                 tainted = True
             image = _IMAGE.match(s)
@@ -504,6 +531,7 @@ class _Parser:
 
     def _statement(self, lines: list[_Line]) -> Statement | None:
         first = lines[0]
+        self._br_allowed.update(ln.no for ln in lines[:3])
         if len(lines) > 1:
             self.add(
                 first.no,
@@ -515,7 +543,7 @@ class _Parser:
         if _BULLET.match(first.raw) or s.startswith(("|", "![", "## ")):
             self.add(first.no, "見出しのないスライドは 1 行の文だけ（一言）です")
             return None
-        text = _runs(s)
+        text = self._text(first.no, s)
         self.fit(first.no, text, "一言", PT_STATEMENT, BODY_WIDTH, 3)
         return Statement(text, self._gloss(first, PT_STATEMENT, BODY_WIDTH)[0])
 
@@ -708,11 +736,12 @@ class _Parser:
 
     def _table(self, heading: str, body: list[_Line]) -> Table | None:
         head = body[0]
+        self._br_allowed.update(ln.no for ln in body if ln.s.startswith("|"))
         for ln in body:
             if not ln.s.startswith("|"):
                 self.add(ln.no, "表の行は `|` で始めます。表と他の内容は混ぜられません")
                 return None
-        header = self._cells(head.s)
+        header = [self._breaks(head.no, c) for c in self._cells(head.s)]
         n = len(header)
         cell_width = BODY_WIDTH / n - 0.2
         header_glosses, header_gloss_lines = self._cell_glosses(head, n, cell_width)
@@ -756,7 +785,7 @@ class _Parser:
         for ln in data:
             glosses, gloss_lines = self._cell_glosses(ln, n, cell_width)
             row_glosses.append(glosses)
-            cells = self._cells(ln.s)
+            cells = [self._breaks(ln.no, c) for c in self._cells(ln.s)]
             if len(cells) != n:
                 self.add(ln.no, f"行の列数 {len(cells)} が見出し行の {n} と違います")
                 ok = False
