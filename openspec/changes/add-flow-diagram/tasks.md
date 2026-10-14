@@ -44,7 +44,7 @@ Issue: #14
 
 ## 3. 配置（`slidekit/layout.py`）
 
-- [ ] 3.1 箱の大きさ、列と行の間隔、範囲の枠の位置を計算する
+- [x] 3.1 箱の大きさ、列と行の間隔、範囲の枠の位置を計算する
   - Refs: Requirement「箱の大きさ」「列と行の間隔」「範囲の枠」、D3、D4
   - Files: `slidekit/layout.py`（新規）、`tests/test_layout.py`（新規）
   - Interface: `layout.layout_flow(spec: FlowSpec, max_w: float, max_h: float) -> Diagram`、`Diagram`・`PlacedBox`・`PlacedFrame`・`PlacedArrow`・`PlacedLabel`・`PlacedCross`（D1 のフィールド）。D3 の寸法の定数

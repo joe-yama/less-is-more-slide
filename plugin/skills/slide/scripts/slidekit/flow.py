@@ -33,6 +33,7 @@ class BoxSpec:
     row_bottom: int
     lines: list[Text]
     line_no: int  # 最初に現れた配置の行
+    line_nos: list[int] = field(default_factory=list)  # lines の各行の、構成図ファイルの行番号
 
 
 @dataclass
@@ -213,6 +214,7 @@ class _Parser:
             self.add(no, f"箱 `{name}` の中の行は {MAX_BOX_LINES} 行までです")
             return
         box.lines.append(inline_runs(text))
+        box.line_nos.append(no)
         for _ in range(sum(1 for r in box.lines[-1] if r.emphasis)):
             if not self._count_place(no):
                 break
