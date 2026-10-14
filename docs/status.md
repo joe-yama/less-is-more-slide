@@ -1,6 +1,10 @@
 # Current status
 
-Last updated: 2026-10-13 (add-gloss をアーカイブした). Update this file after every archive.
+Last updated: 2026-10-14 (agentic-harness を v0.5.0 に更新した). Update this file in the archive commit of every change.
+
+Last retro: 2026-10-14 (v0.5.0 の導入日を起点にした。the periodic retro of `harness:workflow` reads and sets this line).
+
+This file holds the current state only, no history: replace lines, do not append. History is in `openspec/changes/archive/` (grep it), rulings in each change's `design.md`. Budget: 20,000 bytes (about 5k tokens), read at the start of every design and implementation session; CI warns above it.
 
 ## Phase
 
@@ -23,9 +27,9 @@ Last updated: 2026-10-13 (add-gloss をアーカイブした). Update this file 
 ## Next candidates
 
 1. 受け入れで見つかった問題の修正。
-2. 同梱アイコン 14 個の描き直し。いまは 16×16 で 1.2 インチに表示される。32×32 以上で描けば 2.4 インチになる（pixel-art-display-size の design.md 合意事項）。
-3. add-slide-plugin・pixel-art-display-size・add-gloss の Proposals（`docs/changes.md` の Handed on）からの改善。python-pptx の版の固定、出力のファイルの権限、レイアウトの 16:9 化、テストのコメントの直し、拒否のテストで理由の文も確かめること、`manuscript.py` の添え訳の判定の重複の整理など。
-4. ハーネスの `ask-gate.sh` に `uv lock` の規則を足す提案（`docs/harness/lessons.md`）。
+2. 同梱アイコン 14 個を 32×32 以上で描き直す（[pixel-art-display-size の design.md](../openspec/changes/archive/2026-10-09-pixel-art-display-size/design.md) の合意事項）。
+3. 過去の変更の Proposals からの改善（[`docs/changes.md`](changes.md) の Handed on。凍結した履歴で、追記はしない）。
+4. ハーネスの `ask-gate.sh` に `uv lock` の規則を足す提案（[`docs/harness/lessons.md`](harness/lessons.md)）。
 
 ## Harness versions
 
@@ -33,7 +37,7 @@ Last updated: 2026-10-13 (add-gloss をアーカイブした). Update this file 
 
 | Component | Version |
 |---|---|
-| agentic-harness | v0.4.0 |
+| agentic-harness | v0.5.0 |
 | OpenSpec CLI / skills | 1.14.1（`/opsx:propose`・`archive`・`update`・`sync`、`.agents/skills` に同じ 4 つ） |
 | Claude Code | 2.1.295 |
 | Copilot CLI | 1.0.90（`harness` プラグインは未導入） |

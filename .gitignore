@@ -3,6 +3,7 @@
 !.env.example
 .claude/settings.local.json
 .claude/worktrees/
+.worktrees/
 .playwright-mcp/
 .harness/*
 !.harness/env.json

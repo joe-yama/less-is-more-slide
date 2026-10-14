@@ -1,5 +1,5 @@
 # Changes here will be overwritten by Copier; do not edit manually.
-_commit: harness--v0.4.0
+_commit: harness--v0.5.0
 _src_path: gh:joe-yama/agentic-harness
 agents:
 - claude
