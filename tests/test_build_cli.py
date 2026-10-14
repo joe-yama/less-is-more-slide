@@ -104,3 +104,12 @@ def test_output_without_o_is_rejected(tmp_path):
     assert build.main([str(src), str(out)]) != 0
     assert not out.exists()
     assert build.main([str(src)]) != 0
+
+
+def test_flow_violation_is_reported_on_the_image_line_of_the_manuscript(tmp_path, capsys):
+    (tmp_path / "今の構成.flow").write_text("| A | B |\nA -> B\n読めない行\n", encoding="utf-8")
+    src = tmp_path / "a.md"
+    src.write_text("# 題\n---\n## 構成\n![今の構成](今の構成.flow)\n", encoding="utf-8")
+    assert build.main([str(src), "-o", str(tmp_path / "a.pptx")]) == 1
+    err = capsys.readouterr().err.splitlines()
+    assert any(":4: 構成図ファイル" in line for line in err)

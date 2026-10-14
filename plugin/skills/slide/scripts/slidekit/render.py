@@ -9,6 +9,7 @@ from pathlib import Path
 from lxml import etree
 from pptx import Presentation
 from pptx.dml.color import RGBColor
+from pptx.enum.shapes import MSO_CONNECTOR, MSO_SHAPE
 from pptx.enum.text import MSO_ANCHOR, MSO_AUTO_SIZE, PP_ALIGN
 from pptx.opc.constants import RELATIONSHIP_TYPE as RT
 from pptx.oxml import parse_xml
@@ -19,6 +20,8 @@ from slidekit.fit import (
     BULLET_GAP_PT,
     CELL_MARGIN_V,
     COLUMN_BULLET_GAP_PT,
+    PT_BOX_LINE,
+    PT_BOX_NAME,
     PT_BULLET,
     PT_CAPTION,
     PT_CELL,
@@ -26,6 +29,9 @@ from slidekit.fit import (
     PT_COLUMN_TEXT,
     PT_COVER_LINE,
     PT_COVER_TITLE,
+    PT_CROSS,
+    PT_FLOW_LABEL,
+    PT_FLOW_NOTE,
     PT_HEADING,
     PT_PAGE_NUMBER,
     PT_STATEMENT,
@@ -34,12 +40,24 @@ from slidekit.fit import (
     line_count,
     text_height_in,
 )
+from slidekit.layout import (
+    BOX_PAD_X,
+    BOX_PAD_Y,
+    CROSS_SIZE,
+    CROSS_TEXT_GAP,
+    NOTE_GAP,
+    Diagram,
+    PlacedArrow,
+    PlacedLabel,
+)
 from slidekit.manuscript import (
     Block,
     Bullets,
     BulletsBlock,
     Cover,
     Deck,
+    DiagramBlock,
+    DiagramFigure,
     Figure,
     ImageBlock,
     Run,
@@ -49,7 +67,7 @@ from slidekit.manuscript import (
     TextBlock,
     TwoColumn,
 )
-from slidekit.palette import ACCENT, GLOSS, GRAY, INK, PAPER
+from slidekit.palette import ACCENT, FRAME, GLOSS, GRAY, INK, PAPER
 from slidekit.png import encode_png
 
 FONT = "メイリオ"
@@ -73,6 +91,12 @@ LAYOUT_BLANK = 6
 MIN_SCALE, MAX_SCALE, TARGET_PX = 1, 64, 1024
 IMAGE_TARGET = 2.4
 DOT_MIN, DOT_MAX = 0.05, 0.075  # 1 ドットの寸法（インチ）の下限と上限
+BOX_LINE_PT = 1.25  # 構成図の線の太さ（pt）
+FRAME_LINE_PT = 1
+ARROW_LINE_PT = 1.5
+ARROW_EMPHASIS_PT = 2
+_CROSS_EPS = 1e-6
+NOTE_LINES = 3
 
 
 def image_long_side(longest: int) -> float:
@@ -256,6 +280,132 @@ def _figure(slide, s: Figure) -> None:
         _paragraphs(tf, [s.caption], PT_CAPTION, INK, False, glosses=[s.caption_gloss])
 
 
+# --- 構成図 ---
+
+
+def _bare(shape) -> None:
+    """テーマの書式の参照（p:style）を取り除く。見た目は明示した属性だけで決める。"""
+    for style in shape._element.xpath("./p:style"):
+        shape._element.remove(style)
+
+
+def _outline(shape, pt: float, color: str, dashed: bool = False) -> None:
+    shape.fill.background()
+    shape.line.width = Pt(pt)
+    shape.line.color.rgb = _rgb(color)
+    if dashed:
+        ln = shape._element.xpath("./p:spPr/a:ln")[0]
+        ln.append(parse_xml(f'<a:prstDash xmlns:a="{_NS_A}" val="dash"/>'))
+
+
+def _flow_text(group, name: str, x, y, w, h, lines: list[tuple[str, float, str]]) -> None:
+    """余白 0、折り返しなし、左寄せの文字の枠。lines は（文、大きさ、色）の段落。"""
+    box = group.shapes.add_textbox(Inches(x), Inches(y), Inches(w), Inches(h))
+    box.name = name
+    tf = box.text_frame
+    _frame(tf, MSO_ANCHOR.TOP)
+    tf.word_wrap = False
+    for i, (text, pt, color) in enumerate(lines):
+        p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
+        _fill_paragraph(p, (Run(text),), pt, color)
+
+
+def _arrow(group, a: PlacedArrow, x: float, y: float) -> None:
+    pts = [(int(Inches(x + px)), int(Inches(y + py))) for px, py in a.points]
+    if len(pts) == 2:
+        shape = group.shapes.add_connector(MSO_CONNECTOR.STRAIGHT, *pts[0], *pts[1])
+    else:
+        builder = group.shapes.build_freeform(*pts[0], scale=1.0)
+        builder.add_line_segments(pts[1:], close=False)
+        shape = builder.convert_to_shape()
+        shape.fill.background()
+    shape.name = "矢印"
+    _bare(shape)
+    shape.line.width = Pt(ARROW_EMPHASIS_PT if a.emphasis else ARROW_LINE_PT)
+    shape.line.color.rgb = _rgb(ACCENT if a.emphasis else INK)
+    ln = shape._element.xpath("./p:spPr/a:ln")[0]
+    if a.dashed:
+        ln.append(parse_xml(f'<a:prstDash xmlns:a="{_NS_A}" val="dash"/>'))
+    ln.append(parse_xml(f'<a:tailEnd xmlns:a="{_NS_A}" type="triangle"/>'))
+
+
+def _is_cross_text(lb: PlacedLabel, d: Diagram) -> bool:
+    """× の文は、× 印の右 CROSS_TEXT_GAP に、× 印と上下が重なる位置に置かれている。"""
+    return any(
+        abs(lb.x - (c.x + CROSS_SIZE + CROSS_TEXT_GAP)) < _CROSS_EPS
+        and lb.y < c.y + c.h
+        and lb.y + lb.h > c.y
+        for c in d.crosses
+    )
+
+
+def _diagram(slide, d: Diagram, alt: str, x: float, y: float) -> None:
+    group = slide.shapes.add_group_shape()
+    group.name = "構成図"
+    group._element.xpath("./p:nvGrpSpPr/p:cNvPr")[0].set("descr", alt)
+    for f in d.frames:
+        shape = group.shapes.add_shape(
+            MSO_SHAPE.RECTANGLE, Inches(x + f.x), Inches(y + f.y), Inches(f.w), Inches(f.h)
+        )
+        shape.name = "範囲の枠"
+        _bare(shape)
+        _outline(shape, FRAME_LINE_PT, FRAME, dashed=True)
+        shape.text_frame.paragraphs[0].alignment = PP_ALIGN.LEFT  # 既定は中央寄せの空の段落
+        _flow_text(
+            group,
+            "範囲の枠のラベル",
+            x + f.label_x,
+            y + f.label_y,
+            max(f.w - 0.2, 0.1),
+            text_height_in(1, PT_FLOW_LABEL),
+            [(f.label, PT_FLOW_LABEL, GRAY)],
+        )
+    for b in d.boxes:
+        shape = group.shapes.add_shape(
+            MSO_SHAPE.RECTANGLE, Inches(x + b.x), Inches(y + b.y), Inches(b.w), Inches(b.h)
+        )
+        shape.name = "箱"
+        _bare(shape)
+        _outline(shape, BOX_LINE_PT, INK)
+        tf = shape.text_frame
+        _frame(tf, MSO_ANCHOR.MIDDLE)
+        tf.margin_left = tf.margin_right = Inches(BOX_PAD_X)
+        tf.margin_top = tf.margin_bottom = Inches(BOX_PAD_Y)
+        _fill_paragraph(tf.paragraphs[0], (Run(b.name),), PT_BOX_NAME, INK)
+        for line in b.lines:
+            _fill_paragraph(tf.add_paragraph(), line, PT_BOX_LINE, GRAY)
+    for a in d.arrows:
+        _arrow(group, a, x, y)
+    for lb in d.labels:
+        cross_text = _is_cross_text(lb, d)
+        color = ACCENT if cross_text or lb.emphasis else GRAY
+        _flow_text(
+            group,
+            "× の文" if cross_text else "ラベル",
+            x + lb.x,
+            y + lb.y,
+            lb.w,
+            lb.h,
+            [(line, PT_FLOW_LABEL, color) for line in lb.lines],
+        )
+    for c in d.crosses:
+        box = group.shapes.add_textbox(Inches(x + c.x), Inches(y + c.y), Inches(c.w), Inches(c.h))
+        box.name = "× 印"
+        tf = box.text_frame
+        _frame(tf, MSO_ANCHOR.MIDDLE)
+        tf.word_wrap = False
+        _fill_paragraph(tf.paragraphs[0], (Run("×"),), PT_CROSS, ACCENT)
+
+
+def _diagram_figure(slide, s: DiagramFigure) -> None:
+    _diagram(slide, s.diagram, s.alt, MARGIN_X, BODY_TOP)
+    if s.note is not None:
+        top = BODY_TOP + s.diagram.height + NOTE_GAP
+        h = text_height_in(NOTE_LINES, PT_FLOW_NOTE)
+        tf = _textbox(slide, "図の説明", MARGIN_X, top, BODY_W, h)
+        _paragraphs(tf, [s.note], PT_FLOW_NOTE, INK, False)
+
+
 def _line_xml(side: str, visible: bool) -> str:
     if not visible:
         return f'<a:{side} xmlns:a="{_NS_A}" w="12700"><a:noFill/></a:{side}>'
@@ -320,6 +470,8 @@ def _block(slide, b: Block, x: float) -> None:
         )
     elif isinstance(b, ImageBlock):
         _picture(slide, b.grid, b.alt, x, BODY_TOP)
+    elif isinstance(b, DiagramBlock):
+        _diagram(slide, b.diagram, b.alt, x, BODY_TOP)
     elif isinstance(b, TextBlock):
         tf = _textbox(slide, "文", x, BODY_TOP, COLUMN_W, BODY_BOX_H)
         _paragraphs(tf, [b.text], PT_COLUMN_TEXT, INK, False, glosses=[b.gloss])
@@ -413,6 +565,8 @@ def render(deck: Deck, out_path: Path) -> None:
                 _bullets(slide, s)
             elif isinstance(s, Figure):
                 _figure(slide, s)
+            elif isinstance(s, DiagramFigure):
+                _diagram_figure(slide, s)
             elif isinstance(s, Table):
                 _table(slide, s)
             elif isinstance(s, TwoColumn):

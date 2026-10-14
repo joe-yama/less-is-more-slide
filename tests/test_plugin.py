@@ -118,6 +118,20 @@ def test_critic_checks_the_gloss_against_the_body():
     assert tool_list(fields) == ["Read", "Glob", "Grep"]
 
 
-def test_plugin_version_is_0_2_0_in_both_manifests():
-    assert load(MANIFEST)["version"] == "0.2.0"
-    assert load(MARKETPLACE)["plugins"][0]["version"] == "0.2.0"
+def test_writer_uses_flow_diagrams_only_for_structure_and_keeps_files_with_the_manuscript():
+    _, body = frontmatter(WRITER)
+    assert "構成図は構成や流れを説明するときだけ使う" in body
+    assert "構成図ファイルを原稿と同じフォルダに書く" in body
+    assert "拒否されたら構成図ファイルも直す" in body
+
+
+def test_critic_reads_referenced_flow_files_and_flags_decorative_diagrams():
+    fields, body = frontmatter(CRITIC)
+    assert "参照された構成図ファイルも読む" in body
+    assert "飾りの構成図を指摘する" in body
+    assert tool_list(fields) == ["Read", "Glob", "Grep"]
+
+
+def test_plugin_version_is_0_3_0_in_both_manifests():
+    assert load(MANIFEST)["version"] == "0.3.0"
+    assert load(MARKETPLACE)["plugins"][0]["version"] == "0.3.0"
