@@ -35,7 +35,9 @@ from slidekit.fit import (
     PT_HEADING,
     PT_PAGE_NUMBER,
     PT_STATEMENT,
+    PT_STATEMENT_NOTE,
     STATEMENT_BOX_H,
+    STATEMENT_NOTE_GAP_PT,
     TABLE_ROW_H,
     gloss_pt,
     line_count,
@@ -62,6 +64,7 @@ from slidekit.manuscript import (
     Figure,
     ImageBlock,
     Run,
+    Section,
     Statement,
     Table,
     Text,
@@ -126,9 +129,12 @@ def _style_run(run, pt: float, color: str) -> None:
 def _fill_paragraph(p, text: Text, pt: float, color: str) -> None:
     p.alignment = PP_ALIGN.LEFT
     for r in text:
-        run = p.add_run()
-        run.text = r.text
-        _style_run(run, pt, ACCENT if r.emphasis else color)
+        for i, part in enumerate(r.text.split("\n")):
+            if i > 0:
+                p.add_line_break()  # `\n` の位置で、同じ段落の中で行を改める
+            run = p.add_run()
+            run.text = part
+            _style_run(run, pt, ACCENT if r.emphasis else color)
 
 
 def _bulletize(p) -> None:
@@ -249,14 +255,19 @@ def _white_background(slide) -> None:
 # --- レイアウトごと ---
 
 
-def _cover(slide, s: Cover) -> None:
+def _big_title(slide, title: str, gloss: str | None) -> None:
+    """表紙と中扉のタイトルと添え訳。下端（添え訳があれば添え訳の下端）が 3.8 インチ。"""
     shift = 0.0
-    if s.title_gloss is not None:
-        n = line_count(s.title_gloss, gloss_pt(PT_COVER_TITLE), BODY_W)
+    if gloss is not None:
+        n = line_count(gloss, gloss_pt(PT_COVER_TITLE), BODY_W)
         shift = text_height_in(n, gloss_pt(PT_COVER_TITLE))
         tf = _textbox(slide, "表紙のタイトルの添え訳", MARGIN_X, 3.8 - shift, BODY_W, shift)
-        _gloss_paragraph(tf, s.title_gloss, PT_COVER_TITLE, first=True)
-    _title(slide, s.title, MARGIN_X, 1.6 - shift, BODY_W, 2.2, PT_COVER_TITLE, MSO_ANCHOR.BOTTOM)
+        _gloss_paragraph(tf, gloss, PT_COVER_TITLE, first=True)
+    _title(slide, title, MARGIN_X, 1.6 - shift, BODY_W, 2.2, PT_COVER_TITLE, MSO_ANCHOR.BOTTOM)
+
+
+def _cover(slide, s: Cover) -> None:
+    _big_title(slide, s.title, s.title_gloss)
     if s.lines:
         has_gloss = any(g is not None for g in s.line_glosses)
         tf = _textbox(slide, "表紙の文", MARGIN_X, 4.1, BODY_W, 2.4 if has_gloss else 1.8)
@@ -266,6 +277,12 @@ def _cover(slide, s: Cover) -> None:
 def _statement(slide, s: Statement) -> None:
     tf = _textbox(slide, "一言", MARGIN_X, HEAD_TOP, BODY_W, STATEMENT_BOX_H, MSO_ANCHOR.MIDDLE)
     _paragraphs(tf, [s.text], PT_STATEMENT, INK, False, glosses=[s.gloss])
+    for note, gloss in zip(s.notes, s.note_glosses or [None] * len(s.notes), strict=False):
+        p = tf.add_paragraph()
+        _fill_paragraph(p, note, PT_STATEMENT_NOTE, GRAY)
+        p.space_before = Pt(STATEMENT_NOTE_GAP_PT)
+        if gloss is not None:
+            _gloss_paragraph(tf, gloss, PT_STATEMENT_NOTE)
 
 
 def _bullets(slide, s: Bullets) -> None:
@@ -554,6 +571,8 @@ def render(deck: Deck, out_path: Path) -> None:
         _white_background(slide)
         if isinstance(s, Cover):
             _cover(slide, s)
+        elif isinstance(s, Section):
+            _big_title(slide, s.title, s.title_gloss)
         elif isinstance(s, Statement):
             _statement(slide, s)
         else:
