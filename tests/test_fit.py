@@ -51,3 +51,13 @@ def test_gloss_limits():
 
     assert fit.MAX_GLOSS_LINES == 2
     assert fit.COLUMN_BULLET_GAP_PT == 10
+
+
+def test_flow_diagram_sizes():
+    from slidekit import fit
+
+    assert fit.PT_BOX_NAME == 16
+    assert fit.PT_BOX_LINE == 12
+    assert fit.PT_FLOW_LABEL == 12
+    assert fit.PT_CROSS == 32
+    assert fit.PT_FLOW_NOTE == 16

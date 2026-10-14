@@ -19,6 +19,13 @@ PT_COLUMN_BULLET = 22
 PT_COLUMN_TEXT = 22
 PT_PAGE_NUMBER = 12
 
+# 構成図（design.md D3）。
+PT_BOX_NAME = 16
+PT_BOX_LINE = 12
+PT_FLOW_LABEL = 12  # 矢印のラベル、枠のラベル、× の文
+PT_CROSS = 32
+PT_FLOW_NOTE = 16
+
 # 添え訳（design.md「合意事項」）。大きさは本文の 60% を整数の pt に丸める。
 GLOSS_RATIO = 0.6
 MAX_GLOSS_LINES = 2  # 添え訳の行数の上限

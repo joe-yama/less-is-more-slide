@@ -23,3 +23,8 @@ def test_grid_colors_map_four_characters():
 def test_gloss_color_is_not_a_grid_color():
     assert palette.GLOSS == "767676"
     assert palette.GLOSS not in palette.GRID_COLORS.values()
+
+
+def test_frame_color_is_not_a_grid_color():
+    assert palette.FRAME == "BDBDBD"
+    assert palette.FRAME not in palette.GRID_COLORS.values()

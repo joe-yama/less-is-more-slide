@@ -13,7 +13,7 @@ Issue: #14
   - Test first: `tests/test_inline.py` が、`runs` の強調の分け方、`inline_problems` がインラインコード・リンク・`__`・`~~`・`*強調*`・閉じていない `**` のそれぞれに今と同じ理由を返すこと、`is_emoji` を確かめて赤になる。既存のテストと `tests/test_compat.py` は緑のまま
   - Review: batch A / Risk: none
 
-- [ ] 1.2 範囲の枠の色と、構成図の文字の大きさを定義する
+- [x] 1.2 範囲の枠の色と、構成図の文字の大きさを定義する
   - Refs: Requirement「固定の配色と書体」「構成図の見た目」、D3
   - Files: `slidekit/palette.py`、`slidekit/fit.py`、`tests/test_palette.py`、`tests/test_fit.py`
   - Interface: `palette.FRAME = "BDBDBD"`（`GRID_COLORS` には足さない）。`fit.PT_BOX_NAME = 16`、`fit.PT_BOX_LINE = 12`、`fit.PT_FLOW_LABEL = 12`、`fit.PT_CROSS = 32`、`fit.PT_FLOW_NOTE = 16`
