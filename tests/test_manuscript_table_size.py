@@ -152,3 +152,15 @@ def test_two_header_emphases_are_rejected_at_the_second():
     found = problems(text)
     assert [line for line, _ in found] == [4]
     assert "1 か所" in found[0][1]
+
+
+def _emphasis_table(chars: int):
+    head = ["観点", "A 案", "B 案", "**" + "あ" * chars + "**"]
+    return table(head, ["費用", "高", "中", "低"])
+
+
+def test_emphasis_markers_do_not_count_toward_header_cell_width():
+    (slide,) = deck(_emphasis_table(20))[1:]
+    assert slide.pt == 18  # 20 字は 18pt で 2 行。`**` を数えると 3 行になり 16pt に落ちる
+    (slide,) = deck(_emphasis_table(22))[1:]
+    assert slide.pt == 16  # 22 字は 16pt で 2 行。`**` を数えると拒否される

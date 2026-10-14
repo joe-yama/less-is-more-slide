@@ -792,7 +792,9 @@ class _Parser:
         try:
             heights: list[_RowHeight] = []
             for ln, cells, glosses in rows:
-                cell_lines = [self.fit(ln.no, c, "表のセル", pt, cell_width, 2) for c in cells]
+                cell_lines = [
+                    self.fit(ln.no, _runs(c), "表のセル", pt, cell_width, 2) for c in cells
+                ]
                 gloss_lines = [
                     self.fit(
                         self._glosses[ln.no].no,
