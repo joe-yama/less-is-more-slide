@@ -9,6 +9,7 @@ from slidekit.manuscript import (
     DiagramBlock,
     DiagramFigure,
     Figure,
+    Section,
     Statement,
     Table,
     TwoColumn,
@@ -94,3 +95,13 @@ def test_design_review_builds_with_eight_diagrams(tmp_path):
     assert isinstance(columns[0].left, DiagramBlock)
     assert isinstance(columns[0].right, DiagramBlock)
     assert sum(1 for f in figures if f.note is not None) >= 2
+
+
+def test_design_review_has_statement_note_emphasis_table_and_section():
+    deck = parse((EXAMPLES / "design-review.md").read_text(encoding="utf-8"), EXAMPLES)
+    slides = deck.slides
+    assert any(isinstance(s, Statement) and s.notes for s in slides)
+    assert any(isinstance(s, Table) and s.pt == 16 and s.emphasis_col is not None for s in slides)
+    sections = [i for i, s in enumerate(slides) if isinstance(s, Section)]
+    assert len(sections) == 1
+    assert sections[0] < len(slides) - 1

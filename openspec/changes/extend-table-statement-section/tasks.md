@@ -65,7 +65,7 @@ Issue: #15
 
 ## 4. 見本・文書・版
 
-- [ ] 4.1 見本の原稿に、表・一言・中扉のスライドを足す
+- [x] 4.1 見本の原稿に、表・一言・中扉のスライドを足す
   - Refs: D8、Requirement「中扉レイアウト」「表の列の強調」「表の文字の大きさ」「一言レイアウト」
   - Files: `examples/design-review.md`、`tests/test_examples.py`
   - Test first: `tests/test_examples.py` が次を確かめて赤になる。`examples/design-review.md` が `build.py` で終了コード 0 になること。補足のある一言、`pt == 16` で `emphasis_col` のある表、`Section` を 1 つずつ含むこと。`Section` の後にスライドがあること
