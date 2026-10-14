@@ -1,6 +1,6 @@
 # Current status
 
-Last updated: 2026-10-14 (add-flow-diagram をアーカイブした). Update this file in the archive commit of every change.
+Last updated: 2026-10-15 (extend-table-statement-section をアーカイブした). Update this file in the archive commit of every change.
 
 Last retro: 2026-10-14 (v0.5.0 の導入日を起点にした。the periodic retro of `harness:workflow` reads and sets this line).
 
@@ -8,7 +8,7 @@ This file holds the current state only, no history: replace lines, do not append
 
 ## Phase
 
-最初の版を公開した。プラグイン `less-is-more-slide`（Skill `slide`、Agent `writer`・`critic`）が `main` にある（PR #4）。ドット絵の表示の大きさをドット数から決める変更（目標 2.4 インチ、1 ドット 0.05〜0.075 インチ、長辺は最大 4.6 インチ、格子の上限 64 の撤廃）も入った（PR #7）。英語の本文に日本語などの「添え訳」をつける書式（`^ ` の行、本文の 60% の大きさ、色 `#767676`）も入った（PR #10）。構成図ファイル（`.flow`）から箱・範囲の枠・矢印の構成図を描く書式が入り、図と左右 2 列のレイアウトから参照できる。範囲の枠の色 `#BDBDBD` が加わり、プラグインの版は 0.3.0 になった（PR #16）。
+最初の版を公開した。プラグイン `less-is-more-slide`（Skill `slide`、Agent `writer`・`critic`）が `main` にある（PR #4）。ドット絵の表示の大きさをドット数から決める変更（目標 2.4 インチ、1 ドット 0.05〜0.075 インチ、長辺は最大 4.6 インチ、格子の上限 64 の撤廃）も入った（PR #7）。英語の本文に日本語などの「添え訳」をつける書式（`^ ` の行、本文の 60% の大きさ、色 `#767676`）も入った（PR #10）。構成図ファイル（`.flow`）から箱・範囲の枠・矢印の構成図を描く書式が入り、図と左右 2 列のレイアウトから参照できる。範囲の枠の色 `#BDBDBD` が加わった（PR #16）。表は 18pt で入らなければ 16pt で描き、見出しのセル全体の `**` で列を強調色の枠で囲める。一言に補足（24pt、灰色）、一言と表のセルに改行 `<br>`、2 枚目以降の `# タイトル` だけの中扉が加わり、レイアウトは 7 種になった。プラグインの版は 0.4.0 になった（PR #18）。
 
 - 開発のコマンドは `AGENTS.md` のコマンド表にある。
   - テスト: `uv run pytest`
@@ -27,11 +27,10 @@ This file holds the current state only, no history: replace lines, do not append
 ## Next candidates
 
 1. 受け入れで見つかった問題の修正。
-2. 表・一言・中扉の拡張（`extend-table-statement-section`。add-flow-diagram の見本の原稿にスライドを足す）。
-3. 構成図の配置の限界の扱い: 1 つの箱から 3 つに分かれる形の水平な矢印にラベルを付けられない（D6/D7）、1 列空けた直線の × の文は 2 文字以上だと置けない（add-flow-diagram の最終レビューの Minor）。
-4. 同梱アイコン 14 個を 32×32 以上で描き直す（[pixel-art-display-size の design.md](../openspec/changes/archive/2026-10-09-pixel-art-display-size/design.md) の合意事項）。
-5. 過去の変更の Proposals からの改善（[`docs/changes.md`](changes.md) の Handed on。凍結した履歴で、追記はしない）。
-6. ハーネスの `ask-gate.sh` に `uv lock` の規則を足す提案（[`docs/harness/lessons.md`](harness/lessons.md)）。
+2. 構成図の配置の限界の扱い: 1 つの箱から 3 つに分かれる形の水平な矢印にラベルを付けられない（D6/D7）、1 列空けた直線の × の文は 2 文字以上だと置けない（add-flow-diagram の最終レビューの Minor）。
+3. 同梱アイコン 14 個を 32×32 以上で描き直す（[pixel-art-display-size の design.md](../openspec/changes/archive/2026-10-09-pixel-art-display-size/design.md) の合意事項）。
+4. 過去の変更の Proposals からの改善（[`docs/changes.md`](changes.md) の Handed on。凍結した履歴で、追記はしない）。
+5. ハーネスの `ask-gate.sh` に `uv lock` の規則を足す提案（[`docs/harness/lessons.md`](harness/lessons.md)）。
 
 ## Harness versions
 
