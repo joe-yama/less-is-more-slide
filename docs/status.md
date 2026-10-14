@@ -23,7 +23,6 @@ This file holds the current state only, no history: replace lines, do not append
 
 - add-slide-plugin の受け入れ: README の手順で、Claude Code と Copilot CLI の両方にマーケットプレイスからプラグインを入れる。`examples/sample.md` から作った PPTX を PowerPoint で開き、はみ出しがないか、「人が作った」ように見えるか、アイコン（cloud・people・gear）を描き直すかを判断する。
 - add-gloss の受け入れ（PR #10 の本文に手順）: `examples/bilingual.md` から作った PPTX を PowerPoint で開き、見出しと添え訳が重ならないか、添え訳の灰色が投影で読めるか、表の 11pt が投影で読めるかを見る。添え訳のない `examples/sample.md` の見た目が変わらないことも確かめる。
-- add-flow-diagram の受け入れ（PR #16 はマージ済み）: `examples/design-review.md` から作った PPTX を PowerPoint で開き、7 つの構成図が人が作ったように見えるか、ラベルや線が重ならないかを見る。7 つの図は設計の対話の図の中身が残っていなかったため、spec の Scenario から組み立てた（[design.md](../openspec/changes/archive/2026-10-14-add-flow-diagram/design.md) の「設計の対話の 7 つの図は spec の Scenario から組み立てる」）。設計の対話の図と違えば、`.flow` の中身を渡す。
 - Copilot CLI の対話モードで `harness:adopt` の手順 8 の検証を行う（プラグイン v0.5.0 は導入済み。手で登録したマーケットプレイスは版を固定していない）。
 ## Next candidates
 
