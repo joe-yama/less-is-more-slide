@@ -133,5 +133,5 @@ def test_critic_reads_referenced_flow_files_and_flags_decorative_diagrams():
 
 
 def test_plugin_version_is_0_3_0_in_both_manifests():
-    assert load(MANIFEST)["version"] == "0.3.0"
-    assert load(MARKETPLACE)["plugins"][0]["version"] == "0.3.0"
+    assert load(MANIFEST)["version"] == "0.4.0"
+    assert load(MARKETPLACE)["plugins"][0]["version"] == "0.4.0"

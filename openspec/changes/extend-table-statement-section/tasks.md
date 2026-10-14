@@ -77,7 +77,7 @@ Issue: #15
   - Test first: `tests/test_skill_docs.py` が次を確かめて赤になる。`SKILL.md` と `format.md` の原稿の例から、7 種（`Section` を含む）のスライドがすべてできること（`SIX` を 7 種に）。`format.md` の原稿の例に、補足のある一言、`<br>`、列の強調があり、生成できること（既存の生成のテスト）。`writing.md` に `<br>` の入れ方の規則があること（鍵となる語で確かめ、文言は写さない）
   - Review: batch B / Risk: none
 
-- [ ] 4.3 版を 0.4.0 に上げ、すべてのテストと lint を通す
+- [x] 4.3 版を 0.4.0 に上げ、すべてのテストと lint を通す
   - Refs: D8、D9
   - Files: `plugin/.claude-plugin/plugin.json`、`.claude-plugin/marketplace.json`、`tests/test_plugin.py`
   - Test first: `tests/test_plugin.py` の版のテストを 0.4.0 にして赤になる
