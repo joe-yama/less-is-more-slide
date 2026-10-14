@@ -6,7 +6,7 @@ Issue: #15
 
 ## 1. 前提
 
-- [ ] 1.1 ブランチを最新の main に載せ直し、delta を main の spec と照らす
+- [x] 1.1 ブランチを最新の main に載せ直し、delta を main の spec と照らす
   - Refs: D1、Requirement「Skill の内容」
   - Files: `openspec/changes/extend-table-statement-section/specs/`（違いがあったときだけ）
   - Verify: `git log main --oneline` に `add-flow-diagram` のアーカイブのコミットがあり、`openspec list --specs` に `flow-diagram` がある。`openspec show slide-plugin --type spec` の「Skill の内容」と、この変更の delta の MODIFIED の文が、7 種・改行・補足・列の強調の部分を除いて同じ（違えば `/opsx:update` で合わせる）。`openspec validate extend-table-statement-section --strict` が通る。`uv run pytest` が緑
