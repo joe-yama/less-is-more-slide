@@ -94,7 +94,7 @@ Issue: #14
   - Test first: `tests/test_examples.py` が、`examples/design-review.md` が `build.py` で終了コード 0 になること、構成図が 8 つ（図のレイアウトが 6 枚、2 列が 1 枚で左右に 1 つずつ）あること、注記のある図が 2 枚以上あることを確かめて赤になる。`tests/test_compat.py` は緑のまま
   - Review: batch C / Risk: ui
 
-- [ ] 6.2 Skill の文書に構成図を書く
+- [x] 6.2 Skill の文書に構成図を書く
   - Refs: Requirement「Skill の内容」、D12
   - Files: `plugin/skills/slide/references/format.md`、`plugin/skills/slide/SKILL.md`、`plugin/skills/slide/references/writing.md`、`tests/test_skill_docs.py`
   - Test first: `tests/test_skill_docs.py` が次を確かめて赤になる。`format.md` と `SKILL.md` のすべての `flow` の例が `parse_flow` と `layout_flow`（11.53 × 4.9）で通ること。`format.md` の原稿の例が、最初の `flow` の例を `構成.flow` として置いたうえで生成できること（既存のテストを広げる）。`format.md` に構成図の 4 種の行と図の強調の数え方の節が、`writing.md` に構成図の使いどころの規則があること（見出しか鍵となる語で確かめ、文言は写さない）

@@ -6,9 +6,12 @@ from pathlib import Path
 
 import pytest
 
+from slidekit.flow import parse_flow
+from slidekit.layout import layout_flow
 from slidekit.manuscript import (
     Bullets,
     Cover,
+    DiagramFigure,
     Figure,
     Statement,
     Table,
@@ -41,10 +44,18 @@ def manuscripts(path: Path) -> list[str]:
     return [full_manuscript(b) for b in blocks(path, "markdown")]
 
 
-def kinds_in(path: Path) -> set[type]:
+def place_flow(path: Path, folder: Path) -> None:
+    """文書の最初の flow の例を、原稿の例が参照する 構成.flow として置く。"""
+    flows = blocks(path, "flow")
+    if flows:
+        (folder / "構成.flow").write_text(flows[0], encoding="utf-8")
+
+
+def kinds_in(path: Path, folder: Path) -> set[type]:
+    place_flow(path, folder)
     kinds: set[type] = set()
     for m in manuscripts(path):
-        kinds |= {type(s) for s in parse(m, SKILL_DIR / "icons").slides}
+        kinds |= {type(s) for s in parse(m, folder).slides}
     return kinds
 
 
@@ -57,6 +68,7 @@ def workdir(tmp_path):
 @pytest.mark.parametrize("path", [SKILL, FORMAT], ids=["SKILL.md", "format.md"])
 def test_every_manuscript_example_builds(path, workdir):
     examples = manuscripts(path)
+    place_flow(path, workdir)
     assert examples, f"{path.name} に原稿の例（```markdown）がない"
     for i, text in enumerate(examples):
         src = workdir / f"ex{i}.md"
@@ -74,8 +86,8 @@ def test_every_manuscript_example_builds(path, workdir):
 
 
 @pytest.mark.parametrize("path", [SKILL, FORMAT], ids=["SKILL.md", "format.md"])
-def test_all_six_layouts_are_shown(path):
-    assert kinds_in(path) == SIX
+def test_all_six_layouts_are_shown(path, tmp_path):
+    assert kinds_in(path, tmp_path) - {DiagramFigure} == SIX
 
 
 def test_skill_commands_use_the_design_form():
@@ -144,3 +156,33 @@ def test_format_documents_the_gloss():
 def test_writing_requires_the_gloss_to_match_the_body():
     text = WRITING.read_text(encoding="utf-8")
     assert "添え訳は本文と同じ意味にし、情報を足したり削ったりしない" in text
+
+
+@pytest.mark.parametrize("path", [SKILL, FORMAT], ids=["SKILL.md", "format.md"])
+def test_every_flow_example_passes_parse_and_layout(path):
+    examples = blocks(path, "flow")
+    assert examples, f"{path.name} に構成図の例（```flow）がない"
+    for text in examples:
+        layout_flow(parse_flow(text), 11.53, 4.9)
+
+
+def test_format_documents_the_flow_diagram():
+    text = FORMAT.read_text(encoding="utf-8")
+    assert "## 構成図" in text
+    section = text.split("## 構成図", 1)[1].split("\n## 添え訳", 1)[0]
+    for key in ("配置の行", "箱の中の行", "範囲の枠", "矢印の行", "強調", "構成.flow"):
+        assert key in section, key
+    assert any("(構成.flow)" in b for b in blocks(FORMAT, "markdown"))
+
+
+def test_skill_summarizes_the_flow_diagram():
+    text = SKILL.read_text(encoding="utf-8")
+    assert "構成図" in text and ".flow" in text
+
+
+def test_writing_has_the_flow_diagram_rules():
+    text = WRITING.read_text(encoding="utf-8")
+    assert "構成図は構成や流れを説明するときだけ使う" in text
+    assert "構成図の強調は、言いたい点の 1 か所だけ" in text
+    tell = text.split("### 10.", 1)[1].split("### 11.", 1)[0]
+    assert "構成図" in tell
