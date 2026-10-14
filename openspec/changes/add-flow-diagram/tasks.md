@@ -100,7 +100,7 @@ Issue: #14
   - Test first: `tests/test_skill_docs.py` が次を確かめて赤になる。`format.md` と `SKILL.md` のすべての `flow` の例が `parse_flow` と `layout_flow`（11.53 × 4.9）で通ること。`format.md` の原稿の例が、最初の `flow` の例を `構成.flow` として置いたうえで生成できること（既存のテストを広げる）。`format.md` に構成図の 4 種の行と図の強調の数え方の節が、`writing.md` に構成図の使いどころの規則があること（見出しか鍵となる語で確かめ、文言は写さない）
   - Review: batch C / Risk: none
 
-- [ ] 6.3 作成役・点検役に構成図の観点を足し、版を 0.3.0 に上げる
+- [x] 6.3 作成役・点検役に構成図の観点を足し、版を 0.3.0 に上げる
   - Refs: Requirement「作成役 Agent」「点検役 Agent」、D12
   - Files: `plugin/agents/writer.md`、`plugin/agents/critic.md`、`plugin/.claude-plugin/plugin.json`、`.claude-plugin/marketplace.json`、`tests/test_plugin.py`
   - Test first: `tests/test_plugin.py` が次を確かめて赤になる。作成役の定義に、構成図を構成や流れの説明だけに使うこと・構成図ファイルを原稿と同じフォルダに書くこと・拒否されたら構成図ファイルも直すことがあること。点検役の定義に、参照された構成図ファイルも読むこと・飾りの構成図を指摘することがあること。点検役の道具が読み取りだけのままであること。両方のマニフェストの版が 0.3.0 であること（既存の 0.2.0 のテストを置き換える）
