@@ -6,7 +6,7 @@ Issue: #14
 
 ## 1. 共通の部品
 
-- [ ] 1.1 行内の規則を `slidekit/inline.py` に移す
+- [x] 1.1 行内の規則を `slidekit/inline.py` に移す
   - Refs: Requirement「構成図ファイルの行」、D1、D11
   - Files: `slidekit/inline.py`（新規）、`slidekit/manuscript.py`、`tests/test_inline.py`（新規）
   - Interface: `inline.Run`、`inline.Text`、`inline.runs(s: str) -> Text`、`inline.is_emoji(ch: str) -> bool`、`inline.inline_problems(s: str) -> list[str]`。`manuscript.Run` と `manuscript.Text` はそのまま使える
