@@ -130,3 +130,12 @@ def test_missing_flow_file_is_rejected_with_its_name(tmp_path):
     got = problems_of(tmp_path, "## 構成\n![構成](ない.flow)\n")
     assert [line for line, _ in got] == [4]
     assert "ない.flow" in got[0][1]
+
+
+def test_two_column_diagram_is_limited_to_the_column_width(tmp_path):
+    write(tmp_path, 広い_flow="| " + " | ".join("ABCDEF") + " |\n", 左_flow=SIMPLE)  # 幅 10.2
+    assert isinstance(parse_ok(tmp_path, "## 広い\n![広い](広い.flow)\n"), DiagramFigure)
+    body = "## 比べる\n![左](左.flow)\n|||\n![広い](広い.flow)\n"
+    got = problems_of(tmp_path, body)
+    assert [line for line, _ in got] == [6]
+    assert "5.5" in got[0][1]
